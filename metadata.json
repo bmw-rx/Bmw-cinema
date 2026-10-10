@@ -1,0 +1,8 @@
+{
+  "name": "BMW CINEMA",
+  "description": "The premier movie streaming and download platform featuring 4K & HD titles, live football scores, and ultra-fast direct downloads.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
