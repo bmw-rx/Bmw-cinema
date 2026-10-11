@@ -89,8 +89,8 @@ export const MovieCard: React.FC<MovieCardProps> = ({
               ? 'bg-[#ff6b35] text-black shadow-md'
               : 'bg-black/60 text-white hover:text-[#ff6b35] hover:bg-black/80 opacity-0 group-hover:opacity-100'
           }`}
-          aria-label={favorite ? 'Ondoa kwenye favorites' : 'Weka kwenye favorites'}
-          title={favorite ? 'Ipo kwenye favorites' : 'Weka kwenye favorites'}
+          aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+          title={favorite ? 'In your favorites' : 'Add to favorites'}
         >
           <Heart className={`w-3.5 h-3.5 ${favorite ? 'fill-black' : ''}`} />
         </button>

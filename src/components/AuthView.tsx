@@ -70,7 +70,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           setUserProfile({
             uid: user.uid,
             email: user.email || '',
-            displayName: user.displayName || 'Mtumiaji wa BMW CINEMA',
+            displayName: user.displayName || 'BMW CINEMA Member',
             photoURL: user.photoURL || undefined,
             createdAt: new Date().toISOString(),
           });
@@ -94,23 +94,49 @@ export const AuthView: React.FC<AuthViewProps> = ({
   };
 
   const getCleanErrorMessage = (err: any): string => {
-    const msg = err?.message || String(err);
-    if (msg.includes('auth/invalid-email')) return 'Barua pepe uliyoingiza si sahihi (Invalid email format).';
-    if (msg.includes('auth/user-not-found') || msg.includes('auth/invalid-credential')) {
-      return 'Barua pepe au nenosiri si sahihi. Tafadhali hakiki na ujaribu tena.';
+    const rawMsg = err?.message || String(err);
+    const code = err?.code || '';
+    const msg = `${code} ${rawMsg}`;
+
+    if (msg.includes('auth/operation-not-allowed')) {
+      return 'Email/Password sign-in is currently being enabled on your authentication service. Please ensure Email/Password provider is activated in your project.';
     }
-    if (msg.includes('auth/wrong-password')) return 'Nenosiri si sahihi. Jaribu tena au bonyeza Umesahau Nenosiri.';
-    if (msg.includes('auth/email-already-in-use')) return 'Barua pepe hii tayari inatumika na akaunti nyingine.';
-    if (msg.includes('auth/weak-password')) return 'Nenosiri ni dhaifu mno. Tafadhali weka nenosiri lenye herufi zisizopungua 6.';
-    if (msg.includes('auth/popup-closed-by-user')) return 'Dirisha la kuingia lilifungwa kabla ya kukamilisha.';
-    return msg.replace('Firebase: ', '');
+    if (msg.includes('auth/unauthorized-domain')) {
+      return 'This web domain is not yet on the authorized domains list for authentication. Please add this domain in the Authentication settings or use regular email login.';
+    }
+    if (msg.includes('auth/invalid-email')) {
+      return 'Invalid email address format. Please enter a valid email address.';
+    }
+    if (msg.includes('auth/user-not-found') || msg.includes('auth/invalid-credential')) {
+      return 'Incorrect email or password. Please verify your credentials and try again.';
+    }
+    if (msg.includes('auth/wrong-password')) {
+      return 'Incorrect password. Try again or click Forgot Password.';
+    }
+    if (msg.includes('auth/email-already-in-use')) {
+      return 'An account with this email address already exists. Please sign in instead.';
+    }
+    if (msg.includes('auth/weak-password')) {
+      return 'Password is too weak. Please use at least 6 characters.';
+    }
+    if (msg.includes('auth/popup-closed-by-user')) {
+      return 'Sign-in window was closed before completing authentication.';
+    }
+    if (msg.includes('auth/popup-blocked')) {
+      return 'The sign-in popup was blocked by your browser. Please allow popups for this site.';
+    }
+    return rawMsg
+      .replace(/Firebase:\s*/gi, '')
+      .replace(/Firebase/gi, 'Cloud')
+      .replace(/\(auth\/[a-z0-9-]+\)\.?/gi, '')
+      .trim();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
     if (!email.trim() || !password) {
-      setErrorMsg('Tafadhali jaza barua pepe na nenosiri lako.');
+      setErrorMsg('Please enter both your email address and password.');
       return;
     }
 
@@ -118,7 +144,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     try {
       const prof = await loginWithEmail(email, password);
       setUserProfile(prof);
-      setSuccessMsg('Umefanikiwa kuingia kikamilifu!');
+      setSuccessMsg('Signed in successfully!');
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -130,19 +156,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
     e.preventDefault();
     clearMessages();
     if (!name.trim()) {
-      setErrorMsg('Tafadhali weka jina lako kamili.');
+      setErrorMsg('Please enter your full name or nickname.');
       return;
     }
     if (!email.trim() || !password) {
-      setErrorMsg('Tafadhali jaza barua pepe na nenosiri.');
+      setErrorMsg('Please enter both your email address and password.');
       return;
     }
     if (password.length < 6) {
-      setErrorMsg('Nenosiri lazima liwe na herufi zisizopungua 6.');
+      setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMsg('Manenosiri hayafanani. Tafadhali hakiki tena.');
+      setErrorMsg('Passwords do not match. Please verify.');
       return;
     }
 
@@ -150,7 +176,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     try {
       const prof = await registerWithEmail(email, password, name);
       setUserProfile(prof);
-      setSuccessMsg('Akaunti yako imetengenezwa kikamilifu kwenye BMW CINEMA!');
+      setSuccessMsg('Your BMW CINEMA account has been created successfully!');
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -164,7 +190,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     try {
       const prof = await loginWithGoogle();
       setUserProfile(prof);
-      setSuccessMsg('Umefanikiwa kuingia na akaunti yako ya Google!');
+      setSuccessMsg('Signed in successfully with Google!');
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -176,14 +202,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
     e.preventDefault();
     clearMessages();
     if (!email.trim()) {
-      setErrorMsg('Tafadhali weka barua pepe yako ili tutume kiungo cha kurejesha nenosiri.');
+      setErrorMsg('Please enter your email address to receive a password reset link.');
       return;
     }
 
     setLoading(true);
     try {
       await resetPassword(email);
-      setSuccessMsg(`Kiungo cha kubadilisha nenosiri kimetumwa kwenye barua pepe: ${email}. Tafadhali kagua Inbox au Spam!`);
+      setSuccessMsg(`Password reset link sent to: ${email}. Please check your Inbox or Spam folder!`);
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -198,7 +224,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       await logOut();
       setUserProfile(null);
       setCurrentUser(null);
-      setSuccessMsg('Umetoka kwenye akaunti kikamilifu.');
+      setSuccessMsg('You have been signed out successfully.');
       setActiveTab('login');
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
@@ -220,12 +246,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
             className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-[#ff6b35] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Rudi Nyumbani (Home)</span>
+            <span>Back to Home</span>
           </button>
 
           <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            Cloud Database Secure
+            Secure Cloud Database
           </span>
         </div>
 
@@ -253,11 +279,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Imeunganishwa Kikamilifu (Active)
+                Active Session
               </span>
 
               <h2 className="text-2xl font-bold text-white mb-1">
-                {userProfile?.displayName || currentUser.displayName || 'Mwanachama wa BMW'}
+                {userProfile?.displayName || currentUser.displayName || 'BMW Member'}
               </h2>
               <p className="text-sm text-gray-400 mb-6 font-mono">{currentUser.email}</p>
 
@@ -266,22 +292,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3.5">
                   <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
                     <Clock className="w-3.5 h-3.5 text-[#ff6b35]" />
-                    <span>Uanachama Tangu</span>
+                    <span>Member Since</span>
                   </div>
                   <div className="text-sm font-semibold text-white">
                     {userProfile?.createdAt
-                      ? new Date(userProfile.createdAt).toLocaleDateString('sw-TZ', {
+                      ? new Date(userProfile.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           year: 'numeric',
                         })
-                      : 'Hivi Karibuni'}
+                      : 'Recently'}
                   </div>
                 </div>
 
                 <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3.5">
                   <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Hifadhi ya Wingu</span>
+                    <span>Cloud Storage</span>
                   </div>
                   <div className="text-sm font-semibold text-emerald-400">
                     Cloud Firestore
@@ -299,7 +325,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   className="w-full py-3 px-4 bg-[#ff6b35] hover:bg-[#ff8354] text-black font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_2px_15px_rgba(255,107,53,0.3)]"
                 >
                   <Heart className="w-4 h-4 fill-black" />
-                  <span>Tazama Orodha Yangu (My List / Bookmarks)</span>
+                  <span>View My List (Bookmarks)</span>
                 </button>
 
                 <button
@@ -310,7 +336,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   className="w-full py-2.5 px-4 bg-[#1f1f1f] hover:bg-[#282828] text-white font-medium rounded-xl flex items-center justify-center gap-2 border border-[#333] transition-colors text-sm"
                 >
                   <Film className="w-4 h-4 text-[#ff6b35]" />
-                  <span>Fungua Katalogi ya Filamu</span>
+                  <span>Browse Movie Catalog</span>
                 </button>
 
                 <button
@@ -319,7 +345,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   className="w-full py-2.5 px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-xl flex items-center justify-center gap-2 border border-red-500/30 transition-colors text-sm"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>{loading ? 'Inatoka...' : 'Toka Kwenye Akaunti (Sign Out)'}</span>
+                  <span>{loading ? 'Signing out...' : 'Sign Out'}</span>
                 </button>
               </div>
             </div>
@@ -338,9 +364,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-400 max-w-sm mx-auto">
-                {activeTab === 'login' && 'Ingia kwenye akaunti yako ili kuhifadhi filamu na kupakua moja kwa moja.'}
-                {activeTab === 'register' && 'Fungua akaunti ya bure uweze kutumia hifadhi ya wingu ya filamu zako.'}
-                {activeTab === 'forgot' && 'Ingiza barua pepe yako tukuwezeshe kuweka nenosiri jipya haraka.'}
+                {activeTab === 'login' && 'Sign in to access your saved watchlist, history, and fast downloads.'}
+                {activeTab === 'register' && 'Create a free account to back up your personal movie collection in the cloud.'}
+                {activeTab === 'forgot' && 'Enter your registered email address to receive a password reset link.'}
               </p>
             </div>
 
@@ -356,7 +382,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 }`}
               >
                 <LogIn className="w-4 h-4" />
-                <span>Ingia (Login)</span>
+                <span>Sign In</span>
               </button>
 
               <button
@@ -369,7 +395,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 }`}
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Sajili (Register)</span>
+                <span>Register</span>
               </button>
 
               <button
@@ -382,7 +408,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 }`}
               >
                 <KeyRound className="w-4 h-4" />
-                <span>Sahau Nenosiri</span>
+                <span>Reset Password</span>
               </button>
             </div>
 
@@ -431,15 +457,15 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     </svg>
                     <span>
                       {activeTab === 'login'
-                        ? 'Ingia Moja kwa Moja na Google'
-                        : 'Sajili Akaunti kwa Google'}
+                        ? 'Continue with Google'
+                        : 'Sign up with Google'}
                     </span>
                   </button>
 
                   <div className="relative flex items-center justify-center my-3">
                     <div className="border-t border-[#2a2a2a] w-full" />
                     <span className="bg-[#141414] px-3 text-xs text-gray-500 uppercase tracking-wider">
-                      au tumia barua pepe
+                      or continue with email
                     </span>
                   </div>
                 </>
@@ -450,7 +476,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Barua Pepe (Email)
+                      Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -459,7 +485,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="mfano: sangabmw@gmail.com"
+                        placeholder="e.g. user@example.com"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
@@ -468,14 +494,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-semibold text-gray-300">
-                        Nenosiri (Password)
+                        Password
                       </label>
                       <button
                         type="button"
                         onClick={() => handleTabChange('forgot')}
                         className="text-xs text-[#ff6b35] hover:underline"
                       >
-                        Umesahau Nenosiri?
+                        Forgot Password?
                       </button>
                     </div>
                     <div className="relative">
@@ -485,7 +511,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Ingiza nenosiri lako"
+                        placeholder="Enter your password"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                       <button
@@ -508,7 +534,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     ) : (
                       <LogIn className="w-4 h-4" />
                     )}
-                    <span>{loading ? 'Inaingia...' : 'Ingia Kwenye Akaunti'}</span>
+                    <span>{loading ? 'Signing in...' : 'Sign In'}</span>
                   </button>
                 </form>
               )}
@@ -518,7 +544,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Jina Kamili au Nickname
+                      Full Name or Nickname
                     </label>
                     <div className="relative">
                       <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -527,7 +553,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="mfano: Dennis Sanga"
+                        placeholder="e.g. Alex Johnson"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
@@ -535,7 +561,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Barua Pepe (Email)
+                      Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -544,7 +570,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="mfano: sangabmw@gmail.com"
+                        placeholder="e.g. user@example.com"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
@@ -552,7 +578,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Nenosiri (Herufi zisizopungua 6)
+                      Password (at least 6 characters)
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -561,7 +587,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Unda nenosiri imara"
+                        placeholder="Create a strong password"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                       <button
@@ -576,7 +602,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Thibitisha Nenosiri
+                      Confirm Password
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -585,7 +611,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Rudia nenosiri tena"
+                        placeholder="Re-enter your password"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
@@ -601,7 +627,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     ) : (
                       <UserPlus className="w-4 h-4" />
                     )}
-                    <span>{loading ? 'Inasajili...' : 'Unda Akaunti ya Bure'}</span>
+                    <span>{loading ? 'Creating Account...' : 'Create Free Account'}</span>
                   </button>
                 </form>
               )}
@@ -610,12 +636,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
               {activeTab === 'forgot' && (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div className="text-xs text-gray-400 leading-relaxed bg-[#1c1c1c] p-3 rounded-xl border border-[#282828]">
-                    Weka barua pepe uliyojiandikisha nayo. Mfumo utakutumia barua pepe yenye kiungo rasmi cha kuweka nenosiri jipya.
+                    Enter the email address associated with your account. We will send you a secure link to reset your password.
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                      Barua Pepe Yako (Email)
+                      Your Email Address
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -624,7 +650,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="mfano: sangabmw@gmail.com"
+                        placeholder="e.g. user@example.com"
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
@@ -640,7 +666,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     ) : (
                       <KeyRound className="w-4 h-4" />
                     )}
-                    <span>{loading ? 'Inatuma...' : 'Tuma Kiungo cha Kurejesha'}</span>
+                    <span>{loading ? 'Sending Link...' : 'Send Reset Link'}</span>
                   </button>
 
                   <div className="text-center pt-2">
@@ -650,7 +676,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                       className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Rudi kwenye ukurasa wa Kuingia (Login)</span>
+                      <span>Back to Sign In</span>
                     </button>
                   </div>
                 </form>
@@ -659,7 +685,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
             {/* CARD FOOTER */}
             <div className="px-6 py-4 bg-[#111] border-t border-[#222] text-center text-xs text-gray-500">
-              Data zako zinalindwa kwa njia salama na Firebase Cloud Authentication & Firestore.
+              Your data is securely protected by High-Grade Cloud Authentication & Encrypted Storage.
             </div>
           </div>
         )}

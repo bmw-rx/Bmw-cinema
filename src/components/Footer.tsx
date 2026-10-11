@@ -65,7 +65,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               onClick={() => onNavigate && onNavigate('auth')}
               className="text-[#ff6b35] hover:underline font-semibold transition-colors"
             >
-              Akaunti Yangu
+              My Account
             </button>
           </div>
         </div>

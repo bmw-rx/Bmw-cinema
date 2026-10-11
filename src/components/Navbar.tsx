@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     { id: 'football' as const, label: 'Football', icon: Activity, href: 'football.html', isLive: true },
     { id: 'search' as const, label: 'Search', icon: Search, href: 'search.html' },
     { id: 'favorites' as const, label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
-    { id: 'auth' as const, label: currentUser ? 'Akaunti' : 'Ingia', icon: UserIcon, href: 'auth.html' },
+    { id: 'auth' as const, label: currentUser ? 'Account' : 'Sign In', icon: UserIcon, href: 'auth.html' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent, id: typeof navLinks[number]['id']) => {
@@ -137,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
                   ? 'bg-[#1e1e1e] hover:bg-[#282828] text-white border border-[#333]'
                   : 'bg-[#ff6b35] hover:bg-[#ff8354] text-black shadow-[0_2px_10px_rgba(255,107,53,0.3)]'
               }`}
-              title={currentUser ? (currentUser.email || 'Akaunti') : 'Ingia au Jisajili'}
+              title={currentUser ? (currentUser.email || 'Account') : 'Sign In or Register'}
             >
               {currentUser?.photoURL ? (
                 <img
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
                 <UserIcon className="w-3.5 h-3.5" />
               )}
               <span className="hidden sm:inline">
-                {currentUser ? (currentUser.displayName || 'Akaunti') : 'Ingia / Sajili'}
+                {currentUser ? (currentUser.displayName || 'Account') : 'Sign In'}
               </span>
             </button>
 
