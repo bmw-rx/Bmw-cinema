@@ -8,9 +8,10 @@ import { FootballView } from './components/FootballView';
 import { SearchView } from './components/SearchView';
 import { FavoritesView } from './components/FavoritesView';
 import { MovieDetailView } from './components/MovieDetailView';
+import { AuthView } from './components/AuthView';
 import { Footer } from './components/Footer';
 
-export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie';
+export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
@@ -65,12 +66,18 @@ export default function App() {
         return;
       }
 
+      if (path.includes('auth.html') || hash === '#auth' || params.get('page') === 'auth') {
+        setCurrentPage('auth');
+        return;
+      }
+
       // Check if global page marker was set in standalone HTML file
       const bmwPage = (window as any).BMW_PAGE;
       if (bmwPage === 'football') setCurrentPage('football');
       else if (bmwPage === 'movies') setCurrentPage('movies');
       else if (bmwPage === 'tvshows') setCurrentPage('tvshows');
       else if (bmwPage === 'search') setCurrentPage('search');
+      else if (bmwPage === 'auth') setCurrentPage('auth');
       else if (bmwPage === 'movie') {
         setSelectedMovieId(Number(params.get('id') || 550));
         setCurrentPage('movie');
@@ -205,6 +212,14 @@ export default function App() {
             onBack={() => navigateTo('home')}
             onSelectMovie={handleSelectMovie}
             autoPlay={autoPlayPlayer}
+          />
+        )}
+
+        {currentPage === 'auth' && (
+          <AuthView
+            onBackToHome={() => navigateTo('home')}
+            onNavigateToFavorites={() => navigateTo('favorites')}
+            onNavigateToMovies={() => navigateTo('movies')}
           />
         )}
       </main>

@@ -27,6 +27,7 @@ export default defineConfig(() => {
           tvshows: path.resolve(__dirname, 'tvshows.html'),
           search: path.resolve(__dirname, 'search.html'),
           football: path.resolve(__dirname, 'football.html'),
+          auth: path.resolve(__dirname, 'auth.html'),
         },
       },
     },

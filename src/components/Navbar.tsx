@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity } from 'lucide-react';
+import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon } from 'lucide-react';
 import { getFavorites } from '../services/storage';
+import { subscribeToAuth } from '../services/auth';
+import { User } from 'firebase/auth';
 
 interface NavbarProps {
-  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie';
-  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites') => void;
+  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth';
+  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth') => void;
   onOpenSearch?: () => void;
 }
 
@@ -12,6 +14,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [favCount, setFavCount] = useState(0);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuth((user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     { id: 'football' as const, label: 'Football', icon: Activity, href: 'football.html', isLive: true },
     { id: 'search' as const, label: 'Search', icon: Search, href: 'search.html' },
     { id: 'favorites' as const, label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
+    { id: 'auth' as const, label: currentUser ? 'Akaunti' : 'Ingia', icon: UserIcon, href: 'auth.html' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent, id: typeof navLinks[number]['id']) => {
@@ -120,11 +131,34 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
             </button>
 
             <button
-              onClick={() => onNavigate('movies')}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#ff6b35] hover:bg-[#ff8354] rounded-lg shadow-[0_2px_12px_rgba(255,107,53,0.35)] transition-all transform hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0"
+              onClick={() => onNavigate('auth')}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                currentUser
+                  ? 'bg-[#1e1e1e] hover:bg-[#282828] text-white border border-[#333]'
+                  : 'bg-[#ff6b35] hover:bg-[#ff8354] text-black shadow-[0_2px_10px_rgba(255,107,53,0.3)]'
+              }`}
+              title={currentUser ? (currentUser.email || 'Akaunti') : 'Ingia au Jisajili'}
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Browse Catalog</span>
+              {currentUser?.photoURL ? (
+                <img
+                  src={currentUser.photoURL}
+                  alt="Avatar"
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+              ) : (
+                <UserIcon className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {currentUser ? (currentUser.displayName || 'Akaunti') : 'Ingia / Sajili'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('movies')}
+              className="hidden lg:inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-gray-300 hover:text-white bg-[#1a1a1a] hover:bg-[#222] border border-[#2d2d2d] rounded-lg transition-all whitespace-nowrap shrink-0"
+            >
+              <Play className="w-3 h-3 fill-current text-[#ff6b35]" />
+              <span>Catalog</span>
             </button>
 
             {/* Mobile Menu Button */}

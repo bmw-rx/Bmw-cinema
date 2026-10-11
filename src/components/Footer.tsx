@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface FooterProps {
-  onNavigate?: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites') => void;
+  onNavigate?: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth') => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
@@ -60,6 +60,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               className="text-gray-400 hover:text-[#ff6b35] transition-colors"
             >
               My List
+            </button>
+            <button
+              onClick={() => onNavigate && onNavigate('auth')}
+              className="text-[#ff6b35] hover:underline font-semibold transition-colors"
+            >
+              Akaunti Yangu
             </button>
           </div>
         </div>

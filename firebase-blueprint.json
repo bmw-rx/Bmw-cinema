@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile details stored upon account creation.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "Account email address"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Full name or screen name"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile picture URL"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of account creation"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "ISO timestamp of last login"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Bookmark": {
+      "title": "Movie Bookmark",
+      "description": "A saved movie in the user cloud library.",
+      "type": "object",
+      "properties": {
+        "movieId": {
+          "type": "string",
+          "description": "Movie TMDB or unique identifier"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Movie title"
+        },
+        "posterPath": {
+          "type": "string",
+          "description": "Poster image path or URL"
+        },
+        "rating": {
+          "type": "number",
+          "description": "User rating or TMDB score"
+        },
+        "year": {
+          "type": "string",
+          "description": "Release year"
+        },
+        "addedAt": {
+          "type": "string",
+          "description": "ISO timestamp of when bookmarked"
+        }
+      },
+      "required": ["movieId", "title", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Cloud user profile accessible by the authenticated owner"
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "Private bookmarks for the user"
+    }
+  }
+}
