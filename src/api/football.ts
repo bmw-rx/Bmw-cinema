@@ -1,9 +1,18 @@
 /**
  * BMW CINEMA Live Sports & Football API Service
- * Handles live matches, league standings, top scorers, and fixture analytics
+ * Handles live matches, live streaming feeds, league standings, top scorers, and fixture analytics
  */
 
 const SPORTS_BASE = 'https://live-novascore.officialhectormanuel.workers.dev/api';
+
+export interface StreamChannel {
+  id: number | string;
+  title: string; // e.g. "SD", "HD", "Full HD"
+  resolution: string; // "480p", "720p", "1080p"
+  type: string;
+  url: string;
+  proxy?: string;
+}
 
 export interface LiveMatch {
   id: number;
@@ -28,6 +37,7 @@ export interface LiveMatch {
     home: number;
     away: number;
   } | null;
+  streams?: StreamChannel[];
 }
 
 export interface StandingRow {
@@ -101,6 +111,23 @@ export async function getLiveMatches(): Promise<LiveMatch[]> {
     return data.matches || [];
   } catch (err) {
     console.warn('[Sports API] Failed to fetch live matches:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch live match streams (direct .m3u8 and proxy feeds)
+ */
+export async function getLiveMatchStreams(): Promise<LiveMatch[]> {
+  try {
+    const res = await fetch(`${SPORTS_BASE}/matches/streams`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.matches || [];
+  } catch (err) {
+    console.warn('[Sports API] Failed to fetch match streams:', err);
     return [];
   }
 }
