@@ -2,7 +2,7 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "User profile details stored upon account creation.",
+      "description": "User profile details stored upon account creation including referral stats.",
       "type": "object",
       "properties": {
         "uid": {
@@ -29,9 +29,29 @@
         "lastLoginAt": {
           "type": "string",
           "description": "ISO timestamp of last login"
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "User unique referral code"
+        },
+        "referredBy": {
+          "type": "string",
+          "description": "Referral code used during registration"
+        },
+        "referralCount": {
+          "type": "number",
+          "description": "Number of users who registered using this code"
+        },
+        "referralPoints": {
+          "type": "number",
+          "description": "Total reward points earned"
+        },
+        "vipStatus": {
+          "type": "string",
+          "description": "VIP Tier: free, silver, gold, vip"
         }
       },
-      "required": ["uid", "email", "createdAt"]
+      "required": ["uid", "email", "createdAt", "referralCode"]
     },
     "Bookmark": {
       "title": "Movie Bookmark",
@@ -65,6 +85,18 @@
         }
       },
       "required": ["movieId", "title", "addedAt"]
+    },
+    "ReferralLog": {
+      "title": "Referral Log",
+      "description": "Log entry of friend who registered with referral code",
+      "type": "object",
+      "properties": {
+        "refereeUid": { "type": "string" },
+        "refereeName": { "type": "string" },
+        "rewardPoints": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["refereeUid", "createdAt"]
     }
   },
   "firestore": {
@@ -75,6 +107,10 @@
     "/users/{userId}/bookmarks/{bookmarkId}": {
       "schema": "Bookmark",
       "description": "Private bookmarks for the user"
+    },
+    "/users/{userId}/referrals/{refId}": {
+      "schema": "ReferralLog",
+      "description": "List of friends referred by this user"
     }
   }
 }

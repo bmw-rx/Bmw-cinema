@@ -17,6 +17,12 @@ import {
   ShieldCheck,
   Clock,
   Heart,
+  Gift,
+  Copy,
+  Check,
+  Users,
+  Award,
+  Share2,
 } from 'lucide-react';
 import {
   loginWithEmail,
@@ -27,6 +33,7 @@ import {
   subscribeToAuth,
   UserProfileData,
   getUserProfile,
+  getUserReferrals,
 } from '../services/auth';
 import { User } from 'firebase/auth';
 
@@ -46,18 +53,32 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<AuthTab>('login');
+  const [referralsList, setReferralsList] = useState<Array<{ refereeName: string; createdAt: string; rewardPoints: number }>>([]);
 
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralInput, setReferralInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Status states
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Read ref from URL parameter if present (?ref=CODE)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refParam = params.get('ref');
+    if (refParam) {
+      setReferralInput(refParam.toUpperCase());
+      setActiveTab('register');
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth(async (user) => {
@@ -66,6 +87,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
         const prof = await getUserProfile(user.uid);
         if (prof) {
           setUserProfile(prof);
+          const refs = await getUserReferrals(user.uid);
+          setReferralsList(refs);
         } else {
           setUserProfile({
             uid: user.uid,
@@ -73,10 +96,15 @@ export const AuthView: React.FC<AuthViewProps> = ({
             displayName: user.displayName || 'BMW CINEMA Member',
             photoURL: user.photoURL || undefined,
             createdAt: new Date().toISOString(),
+            referralCode: 'BMW' + Math.floor(1000 + Math.random() * 9000),
+            referralCount: 0,
+            referralPoints: 10,
+            vipStatus: 'free',
           });
         }
       } else {
         setUserProfile(null);
+        setReferralsList([]);
       }
     });
 
@@ -99,37 +127,28 @@ export const AuthView: React.FC<AuthViewProps> = ({
     const msg = `${code} ${rawMsg}`;
 
     if (msg.includes('auth/operation-not-allowed')) {
-      return 'Email/Password sign-in is currently being enabled on your authentication service. Please ensure Email/Password provider is activated in your project.';
+      return 'Account sign-in method is currently completing activation. Please verify your Email/Password configuration.';
     }
     if (msg.includes('auth/unauthorized-domain')) {
-      return 'This web domain is not yet on the authorized domains list for authentication. Please add this domain in the Authentication settings or use regular email login.';
+      return 'Authentication authorization pending for this domain. Please ensure current URL domain is permitted.';
     }
-    if (msg.includes('auth/invalid-email')) {
-      return 'Invalid email address format. Please enter a valid email address.';
-    }
-    if (msg.includes('auth/user-not-found') || msg.includes('auth/invalid-credential')) {
-      return 'Incorrect email or password. Please verify your credentials and try again.';
-    }
-    if (msg.includes('auth/wrong-password')) {
-      return 'Incorrect password. Try again or click Forgot Password.';
+    if (msg.includes('auth/invalid-email')) return 'Invalid email address format. Please enter a valid email.';
+    if (msg.includes('auth/user-not-found') || msg.includes('auth/wrong-password') || msg.includes('auth/invalid-credential')) {
+      return 'Incorrect email address or password. Please try again.';
     }
     if (msg.includes('auth/email-already-in-use')) {
-      return 'An account with this email address already exists. Please sign in instead.';
+      return 'This email address is already registered. Please sign in or use another email.';
     }
     if (msg.includes('auth/weak-password')) {
-      return 'Password is too weak. Please use at least 6 characters.';
+      return 'Password is too weak. Please use at least 6 characters with a combination of letters and numbers.';
     }
     if (msg.includes('auth/popup-closed-by-user')) {
-      return 'Sign-in window was closed before completing authentication.';
+      return 'Sign in window was closed before completion. Please try again.';
     }
-    if (msg.includes('auth/popup-blocked')) {
-      return 'The sign-in popup was blocked by your browser. Please allow popups for this site.';
+    if (msg.includes('auth/network-request-failed')) {
+      return 'Network connection error. Please check your internet connection.';
     }
-    return rawMsg
-      .replace(/Firebase:\s*/gi, '')
-      .replace(/Firebase/gi, 'Cloud')
-      .replace(/\(auth\/[a-z0-9-]+\)\.?/gi, '')
-      .trim();
+    return rawMsg.replace(/firebase/gi, 'Cloud System').replace(/\(auth\/[a-zA-Z0-9-]+\)/g, '').trim() || 'Authentication request could not be completed.';
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -144,7 +163,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     try {
       const prof = await loginWithEmail(email, password);
       setUserProfile(prof);
-      setSuccessMsg('Signed in successfully!');
+      setSuccessMsg('Welcome back to BMW CINEMA!');
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -174,9 +193,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
     setLoading(true);
     try {
-      const prof = await registerWithEmail(email, password, name);
+      const prof = await registerWithEmail(email, password, name, referralInput.trim());
       setUserProfile(prof);
-      setSuccessMsg('Your BMW CINEMA account has been created successfully!');
+      setSuccessMsg(
+        referralInput.trim()
+          ? 'Account created successfully! You earned +50 Welcome Bonus points with your referral code!'
+          : 'Your BMW CINEMA account has been created successfully!'
+      );
     } catch (err: any) {
       setErrorMsg(getCleanErrorMessage(err));
     } finally {
@@ -188,7 +211,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     clearMessages();
     setLoading(true);
     try {
-      const prof = await loginWithGoogle();
+      const prof = await loginWithGoogle(referralInput.trim());
       setUserProfile(prof);
       setSuccessMsg('Signed in successfully with Google!');
     } catch (err: any) {
@@ -233,9 +256,39 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
+  const copyReferralCode = () => {
+    if (!userProfile?.referralCode) return;
+    navigator.clipboard.writeText(userProfile.referralCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const copyReferralLink = () => {
+    if (!userProfile?.referralCode) return;
+    const url = `${window.location.origin}/auth.html?ref=${encodeURIComponent(userProfile.referralCode)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const shareReferral = () => {
+    if (!userProfile?.referralCode) return;
+    const url = `${window.location.origin}/auth.html?ref=${encodeURIComponent(userProfile.referralCode)}`;
+    const shareText = `Join me on BMW CINEMA for free 4K streaming and high-speed movie downloads! Use my invite code: ${userProfile.referralCode} to get 50 bonus points: ${url}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'BMW CINEMA VIP Invitation',
+        text: shareText,
+        url,
+      }).catch(() => copyReferralLink());
+    } else {
+      copyReferralLink();
+    }
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#0d0d0d] via-[#121212] to-[#0a0a0a] flex items-center justify-center">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-xl">
         {/* Back Link */}
         <div className="mb-6 flex items-center justify-between">
           <button
@@ -255,7 +308,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </span>
         </div>
 
-        {/* LOGGED IN USER VIEW */}
+        {/* LOGGED IN USER VIEW WITH REFERRAL SYSTEM */}
         {currentUser ? (
           <div className="bg-[#141414] border border-[#262626] rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
             {/* Top Glow */}
@@ -277,22 +330,28 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 )}
               </div>
 
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Active Session
-              </span>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Active Session
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#ff6b35]/15 text-[#ff6b35] border border-[#ff6b35]/30 uppercase tracking-wider">
+                  <Award className="w-3 h-3" />
+                  {userProfile?.vipStatus || 'Free'} Tier
+                </span>
+              </div>
 
               <h2 className="text-2xl font-bold text-white mb-1">
                 {userProfile?.displayName || currentUser.displayName || 'BMW Member'}
               </h2>
               <p className="text-sm text-gray-400 mb-6 font-mono">{currentUser.email}</p>
 
-              {/* Account Details Cards */}
-              <div className="w-full grid grid-cols-2 gap-3 mb-6 text-left">
-                <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3.5">
-                  <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+              {/* Account Details & Stats Cards */}
+              <div className="w-full grid grid-cols-3 gap-2.5 mb-6 text-left">
+                <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
                     <Clock className="w-3.5 h-3.5 text-[#ff6b35]" />
-                    <span>Member Since</span>
+                    <span>Member</span>
                   </div>
                   <div className="text-sm font-semibold text-white">
                     {userProfile?.createdAt
@@ -304,15 +363,113 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3.5">
-                  <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Cloud Storage</span>
+                <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
+                    <Users className="w-3.5 h-3.5 text-[#38bdf8]" />
+                    <span>Referrals</span>
                   </div>
-                  <div className="text-sm font-semibold text-emerald-400">
-                    Cloud Firestore
+                  <div className="text-base font-bold text-[#38bdf8]">
+                    {userProfile?.referralCount ?? 0}
                   </div>
                 </div>
+
+                <div className="bg-[#1a1a1a] border border-[#262626] rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
+                    <Gift className="w-3.5 h-3.5 text-[#facc15]" />
+                    <span>Points</span>
+                  </div>
+                  <div className="text-base font-bold text-[#facc15]">
+                    {userProfile?.referralPoints ?? 0} pts
+                  </div>
+                </div>
+              </div>
+
+              {/* REFERRAL SYSTEM SECTION */}
+              <div className="w-full mb-6 bg-gradient-to-br from-[#1c1917] to-[#171717] border border-[#ff6b35]/30 rounded-2xl p-4 sm:p-5 text-left shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#ff6b35]/20 flex items-center justify-center text-[#ff6b35]">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        BMW Cinema Reference System
+                        <span className="text-[10px] bg-[#ff6b35] text-black font-extrabold px-1.5 py-0.2 rounded">
+                          +100 PTS
+                        </span>
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        Invite friends to earn 100 reward points and unlock VIP streaming!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Referral Code Box */}
+                <div className="bg-[#121212] border border-[#333] rounded-xl p-3 mb-3 flex items-center justify-between">
+                  <div>
+                    <span className="block text-[11px] text-gray-500 uppercase tracking-wider font-semibold">
+                      Your Unique Referral Code
+                    </span>
+                    <span className="text-lg font-black tracking-widest text-[#ff6b35] font-mono">
+                      {userProfile?.referralCode || 'BMW-CINEMA'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={copyReferralCode}
+                      className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-xs font-semibold text-white rounded-lg flex items-center gap-1.5 transition-colors border border-[#3d3d3d]"
+                    >
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={shareReferral}
+                      className="px-3 py-1.5 bg-[#ff6b35] hover:bg-[#ff8354] text-xs font-semibold text-black rounded-lg flex items-center gap-1.5 transition-colors shadow-md"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Direct Referral Link */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/auth.html?ref=${encodeURIComponent(userProfile?.referralCode || '')}`}
+                    className="flex-1 bg-[#121212] border border-[#2b2b2b] rounded-lg px-3 py-1.5 text-xs text-gray-400 font-mono truncate focus:outline-none"
+                  />
+                  <button
+                    onClick={copyReferralLink}
+                    className="px-3 py-1.5 bg-[#1f1f1f] hover:bg-[#2a2a2a] text-xs font-semibold text-gray-200 rounded-lg flex items-center gap-1 transition-colors border border-[#333] shrink-0"
+                  >
+                    {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
+                  </button>
+                </div>
+
+                {/* Referral History / Invited Friends */}
+                {referralsList.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-[#262626]">
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                      <span className="font-semibold text-gray-300">Invited Friends ({referralsList.length})</span>
+                      <span className="text-emerald-400 font-mono font-medium">+{referralsList.length * 100} pts earned</span>
+                    </div>
+                    <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                      {referralsList.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between text-xs bg-[#121212] px-2.5 py-1.5 rounded-lg border border-[#222]"
+                        >
+                          <span className="text-white font-medium">{item.refereeName || 'New Member'}</span>
+                          <span className="text-[#facc15] font-mono font-semibold">+{item.rewardPoints || 100} pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -365,77 +522,73 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
               <p className="text-xs sm:text-sm text-gray-400 max-w-sm mx-auto">
                 {activeTab === 'login' && 'Sign in to access your saved watchlist, history, and fast downloads.'}
-                {activeTab === 'register' && 'Create a free account to back up your personal movie collection in the cloud.'}
+                {activeTab === 'register' && 'Create a free account to back up your personal movie collection and earn rewards.'}
                 {activeTab === 'forgot' && 'Enter your registered email address to receive a password reset link.'}
               </p>
+
+              {/* Navigation Tabs */}
+              <div className="flex bg-[#0d0d0d] p-1 rounded-xl mt-6 border border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('login')}
+                  className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
+                    activeTab === 'login'
+                      ? 'bg-[#ff6b35] text-black shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('register')}
+                  className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
+                    activeTab === 'register'
+                      ? 'bg-[#ff6b35] text-black shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Create Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('forgot')}
+                  className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
+                    activeTab === 'forgot'
+                      ? 'bg-[#ff6b35] text-black shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
 
-            {/* TAB SELECTORS */}
-            <div className="flex border-b border-[#262626] bg-[#111]">
-              <button
-                type="button"
-                onClick={() => handleTabChange('login')}
-                className={`flex-1 py-3 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  activeTab === 'login'
-                    ? 'text-[#ff6b35] border-b-2 border-[#ff6b35] bg-[#171717]'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Sign In</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('register')}
-                className={`flex-1 py-3 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  activeTab === 'register'
-                    ? 'text-[#ff6b35] border-b-2 border-[#ff6b35] bg-[#171717]'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Register</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('forgot')}
-                className={`flex-1 py-3 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  activeTab === 'forgot'
-                    ? 'text-[#ff6b35] border-b-2 border-[#ff6b35] bg-[#171717]'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Reset Password</span>
-              </button>
-            </div>
-
-            {/* NOTIFICATIONS */}
-            <div className="p-6 sm:p-8 space-y-4">
+            {/* Form Container */}
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Feedback messages */}
               {errorMsg && (
-                <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 flex items-start gap-2.5 text-red-300 text-xs sm:text-sm animate-fadeIn">
-                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
+                <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-400 text-xs sm:text-sm animate-fade-in">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
+                  <span className="leading-snug">{errorMsg}</span>
                 </div>
               )}
 
               {successMsg && (
-                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-start gap-2.5 text-emerald-300 text-xs sm:text-sm animate-fadeIn">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                  <div className="flex-1 leading-relaxed">{successMsg}</div>
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-3 text-emerald-400 text-xs sm:text-sm animate-fade-in">
+                  <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
+                  <span className="leading-snug">{successMsg}</span>
                 </div>
               )}
 
-              {/* GOOGLE ONE-CLICK AUTH (FOR LOGIN & REGISTER) */}
+              {/* One-Click Google Sign In (for login & register) */}
               {activeTab !== 'forgot' && (
                 <>
                   <button
                     type="button"
                     onClick={handleGoogleAuth}
                     disabled={loading}
-                    className="w-full py-2.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors text-sm shadow-sm"
+                    className="w-full py-3 px-4 bg-[#1f1f1f] hover:bg-[#282828] text-white font-medium rounded-xl flex items-center justify-center gap-3 border border-[#333] transition-colors text-sm shadow-sm"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path
@@ -455,17 +608,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                       />
                     </svg>
-                    <span>
-                      {activeTab === 'login'
-                        ? 'Continue with Google'
-                        : 'Sign up with Google'}
-                    </span>
+                    <span>Continue with Google</span>
                   </button>
 
-                  <div className="relative flex items-center justify-center my-3">
-                    <div className="border-t border-[#2a2a2a] w-full" />
-                    <span className="bg-[#141414] px-3 text-xs text-gray-500 uppercase tracking-wider">
-                      or continue with email
+                  <div className="relative flex items-center justify-center">
+                    <div className="border-t border-[#2d2d2d] w-full" />
+                    <span className="bg-[#141414] px-3 text-[11px] uppercase tracking-wider text-gray-500 font-semibold absolute">
+                      or use email
                     </span>
                   </div>
                 </>
@@ -615,6 +764,27 @@ export const AuthView: React.FC<AuthViewProps> = ({
                         className="w-full bg-[#1c1c1c] border border-[#2d2d2d] focus:border-[#ff6b35] focus:outline-none rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 transition-colors"
                       />
                     </div>
+                  </div>
+
+                  {/* Reference / Referral Code Input */}
+                  <div className="p-3 bg-[#181818] border border-[#2a2a2a] rounded-xl">
+                    <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Gift className="w-3.5 h-3.5 text-[#ff6b35]" />
+                        Reference / Referral Code (Optional)
+                      </span>
+                      <span className="text-[10px] text-[#ff6b35] font-normal">+50 Bonus Points</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={referralInput}
+                      onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+                      placeholder="e.g. BMW9X4A"
+                      className="w-full bg-[#121212] border border-[#333] focus:border-[#ff6b35] focus:outline-none rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-gray-500 uppercase tracking-wider"
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Invited by a friend? Enter their BMW Cinema code to receive 50 bonus reward points upon registration.
+                    </p>
                   </div>
 
                   <button

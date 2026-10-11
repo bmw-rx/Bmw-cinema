@@ -20,22 +20,31 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // User profiles
+    // User profiles & referral lookups
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Blanket user listing forbidden for PII privacy
+      // Allow get and query (for referral code lookups by registered users)
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+
       allow create: if isOwner(userId)
         && isValidId(userId)
         && request.resource.data.uid == userId
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 150;
-      allow update: if isOwner(userId)
-        && request.resource.data.uid == resource.data.uid;
+
+      // Allow owner or authenticated users updating referral bonus
+      allow update: if isSignedIn();
       allow delete: if false;
 
       // User bookmarks subcollection
       match /bookmarks/{bookmarkId} {
         allow read, write: if isOwner(userId);
+      }
+
+      // User referral rewards subcollection
+      match /referrals/{refId} {
+        allow read: if isOwner(userId);
+        allow create, write: if isSignedIn();
       }
     }
   }
