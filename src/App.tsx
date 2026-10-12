@@ -9,9 +9,11 @@ import { SearchView } from './components/SearchView';
 import { FavoritesView } from './components/FavoritesView';
 import { MovieDetailView } from './components/MovieDetailView';
 import { AuthView } from './components/AuthView';
+import { AdminPanel } from './components/AdminPanel';
 import { Footer } from './components/Footer';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
-export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth';
+export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
@@ -27,6 +29,17 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const hash = window.location.hash.toLowerCase();
 
+      // Check for /admin or admin.html or ?page=admin or #admin
+      if (
+        path.includes('admin') ||
+        path === '/admin' ||
+        hash === '#admin' ||
+        params.get('page') === 'admin'
+      ) {
+        setCurrentPage('admin');
+        return;
+      }
+
       const idParam = params.get('id');
       if (idParam) {
         setSelectedMovieId(Number(idParam));
@@ -35,7 +48,7 @@ export default function App() {
       }
 
       if (path.includes('movie.html')) {
-        const id = params.get('id') || '550'; // Default fallback
+        const id = params.get('id') || '550';
         setSelectedMovieId(Number(id));
         setCurrentPage('movie');
         return;
@@ -73,7 +86,8 @@ export default function App() {
 
       // Check if global page marker was set in standalone HTML file
       const bmwPage = (window as any).BMW_PAGE;
-      if (bmwPage === 'football') setCurrentPage('football');
+      if (bmwPage === 'admin') setCurrentPage('admin');
+      else if (bmwPage === 'football') setCurrentPage('football');
       else if (bmwPage === 'movies') setCurrentPage('movies');
       else if (bmwPage === 'tvshows') setCurrentPage('tvshows');
       else if (bmwPage === 'search') setCurrentPage('search');
@@ -117,6 +131,8 @@ export default function App() {
       newUrl.searchParams.delete('title');
       if (page === 'home') {
         newUrl.searchParams.delete('page');
+      } else if (page === 'admin') {
+        newUrl.searchParams.set('page', 'admin');
       } else {
         newUrl.searchParams.set('page', page);
       }
@@ -159,7 +175,7 @@ export default function App() {
       />
 
       {/* Main View Container */}
-      <main className="flex-grow">
+      <main className="flex-grow pt-16">
         {currentPage === 'home' && (
           <HomeView
             onSelectMovie={handleSelectMovie}
@@ -222,10 +238,20 @@ export default function App() {
             onNavigateToMovies={() => navigateTo('movies')}
           />
         )}
+
+        {currentPage === 'admin' && (
+          <AdminPanel
+            onBackToHome={() => navigateTo('home')}
+            onNavigateToMovie={(id) => navigateTo('movie', id)}
+          />
+        )}
       </main>
 
       {/* Global Footer */}
       <Footer onNavigate={(p) => navigateTo(p)} />
+
+      {/* PWA Offline indicator */}
+      <OfflineIndicator />
     </div>
   );
 }

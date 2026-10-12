@@ -35,6 +35,8 @@ export interface UserProfileData {
   referralCount: number;
   referralPoints: number;
   vipStatus?: 'free' | 'silver' | 'gold' | 'vip';
+  notificationsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
 }
 
 /**
@@ -106,6 +108,8 @@ export async function syncUserProfile(
         referralCount: 0,
         referralPoints: cleanRefCode ? 50 : 10, // 50 bonus pts if joined with friend referral, else 10 welcome pts
         vipStatus: 'free',
+        notificationsEnabled: true,
+        emailNotificationsEnabled: true,
       };
 
       await setDoc(userRef, profile);

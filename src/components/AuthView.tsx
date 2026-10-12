@@ -23,6 +23,8 @@ import {
   Users,
   Award,
   Share2,
+  Bell,
+  BellRing,
 } from 'lucide-react';
 import {
   loginWithEmail,
@@ -35,6 +37,11 @@ import {
   getUserProfile,
   getUserReferrals,
 } from '../services/auth';
+import {
+  updateUserNotificationPreferences,
+  requestNotificationPermission,
+  getNotificationPermission,
+} from '../services/notifications';
 import { User } from 'firebase/auth';
 
 interface AuthViewProps {
@@ -69,6 +76,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [pushEnabled, setPushEnabled] = useState<boolean>(true);
+  const [emailAlertsEnabled, setEmailAlertsEnabled] = useState<boolean>(true);
+  const [notifUpdating, setNotifUpdating] = useState(false);
 
   // Read ref from URL parameter if present (?ref=CODE)
   useEffect(() => {
@@ -87,6 +97,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
         const prof = await getUserProfile(user.uid);
         if (prof) {
           setUserProfile(prof);
+          setPushEnabled(prof.notificationsEnabled !== false);
+          setEmailAlertsEnabled(prof.emailNotificationsEnabled !== false);
           const refs = await getUserReferrals(user.uid);
           setReferralsList(refs);
         } else {
@@ -470,6 +482,100 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* NOTIFICATION PREFERENCES SECTION */}
+              <div className="w-full mb-6 bg-[#1a1a1a] border border-[#262626] rounded-2xl p-4 sm:p-5 text-left shadow-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                      <BellRing className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        Push & Email Notifications
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        Stay informed on new movie releases, live matches, and VIP rewards.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Browser Push Toggle */}
+                  <div className="flex items-center justify-between bg-[#121212] p-3 rounded-xl border border-[#2a2a2a]">
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>Device Push Notifications</span>
+                        {pushEnabled && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-bold bg-emerald-500/20 text-emerald-400 rounded">Active</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-400">
+                        Receive instant alerts on your screen and home screen app.
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!currentUser) return;
+                        setNotifUpdating(true);
+                        const nextState = !pushEnabled;
+                        if (nextState) {
+                          await requestNotificationPermission();
+                        }
+                        setPushEnabled(nextState);
+                        await updateUserNotificationPreferences(currentUser.uid, {
+                          notificationsEnabled: nextState,
+                        });
+                        setNotifUpdating(false);
+                      }}
+                      disabled={notifUpdating}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        pushEnabled
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-gray-400'
+                      }`}
+                    >
+                      {pushEnabled ? 'Allowed' : 'Disabled'}
+                    </button>
+                  </div>
+
+                  {/* Account Email Notifications Toggle */}
+                  <div className="flex items-center justify-between bg-[#121212] p-3 rounded-xl border border-[#2a2a2a]">
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>Email Notifications</span>
+                        {emailAlertsEnabled && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-bold bg-blue-500/20 text-blue-400 rounded">Enabled</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-400">
+                        Receive movie announcements sent to <span className="text-[#ff6b35] font-mono">{currentUser.email}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!currentUser) return;
+                        setNotifUpdating(true);
+                        const nextState = !emailAlertsEnabled;
+                        setEmailAlertsEnabled(nextState);
+                        await updateUserNotificationPreferences(currentUser.uid, {
+                          emailNotificationsEnabled: nextState,
+                        });
+                        setNotifUpdating(false);
+                      }}
+                      disabled={notifUpdating}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        emailAlertsEnabled
+                          ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-gray-400'
+                      }`}
+                    >
+                      {emailAlertsEnabled ? 'Active' : 'Muted'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Action Buttons */}

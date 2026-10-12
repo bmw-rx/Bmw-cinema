@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon } from 'lucide-react';
+import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, Shield } from 'lucide-react';
 import { getFavorites } from '../services/storage';
 import { subscribeToAuth } from '../services/auth';
 import { User } from 'firebase/auth';
+import { PWAInstallButton } from './PWAInstallButton';
+import { NotificationCenter } from './NotificationCenter';
 
 interface NavbarProps {
-  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth';
-  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth') => void;
+  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin';
+  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth' | 'admin') => void;
   onOpenSearch?: () => void;
 }
 
@@ -50,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     { id: 'auth' as const, label: currentUser ? 'Account' : 'Sign In', icon: UserIcon, href: 'auth.html' },
   ];
 
-  const handleLinkClick = (e: React.MouseEvent, id: typeof navLinks[number]['id']) => {
+  const handleLinkClick = (e: React.MouseEvent, id: any) => {
     e.preventDefault();
     onNavigate(id);
     setMobileMenuOpen(false);
@@ -65,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-8 h-10">
+        <div className="flex items-center justify-between gap-4 h-10">
           {/* Zone 1: Brand Wordmark */}
           <a
             href="index.html"
@@ -82,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
           </a>
 
           {/* Zone 2: Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
             {navLinks.map((link) => {
               const isActive = activePage === link.id;
               return (
@@ -116,23 +118,31 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
             })}
           </nav>
 
-          {/* Zone 3: Primary Action */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Zone 3: Primary Actions (Install App, Notifications, Search, Account, Mobile Menu) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* PWA Install Button */}
+            <PWAInstallButton />
+
+            {/* Notification Center with live unread badge */}
+            <NotificationCenter onNavigate={(page) => onNavigate(page as any)} />
+
+            {/* Search Trigger */}
             <button
               onClick={() => {
                 if (onOpenSearch) onOpenSearch();
                 else onNavigate('search');
               }}
-              className="p-2 text-gray-300 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition-colors"
+              className="p-2 text-gray-300 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition-colors cursor-pointer"
               aria-label="Search Movies"
               title="Search"
             >
               <Search className="w-5 h-5" />
             </button>
 
+            {/* Account Trigger */}
             <button
               onClick={() => onNavigate('auth')}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 currentUser
                   ? 'bg-[#1e1e1e] hover:bg-[#282828] text-white border border-[#333]'
                   : 'bg-[#ff6b35] hover:bg-[#ff8354] text-black shadow-[0_2px_10px_rgba(255,107,53,0.3)]'
@@ -153,18 +163,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
               </span>
             </button>
 
-            <button
-              onClick={() => onNavigate('movies')}
-              className="hidden lg:inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-gray-300 hover:text-white bg-[#1a1a1a] hover:bg-[#222] border border-[#2d2d2d] rounded-lg transition-all whitespace-nowrap shrink-0"
-            >
-              <Play className="w-3 h-3 fill-current text-[#ff6b35]" />
-              <span>Catalog</span>
-            </button>
-
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition-colors"
+              className="md:hidden p-2 text-gray-300 hover:text-white hover:bg-[#1a1a1a] rounded-lg transition-colors cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -176,6 +178,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#141414] border-b border-[#262626] px-4 py-4 space-y-2 animate-fadeIn">
+          {/* Mobile Install App Button */}
+          <div className="pb-2 border-b border-zinc-800">
+            <PWAInstallButton variant="banner" />
+          </div>
+
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = activePage === link.id;
@@ -207,6 +214,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
               </a>
             );
           })}
+
+          {/* Quick link to /admin in mobile menu */}
+          <div className="pt-2 border-t border-zinc-800/80">
+            <button
+              onClick={(e) => handleLinkClick(e, 'admin')}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-zinc-800/50 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5 text-[#ff6b35]" />
+                <span>Admin Console (/admin)</span>
+              </div>
+              <span className="text-[10px] text-zinc-500 font-mono">Protected PIN: 3006</span>
+            </button>
+          </div>
         </div>
       )}
     </header>

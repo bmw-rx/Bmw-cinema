@@ -2,54 +2,22 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "User profile details stored upon account creation including referral stats.",
+      "description": "User profile details stored upon account creation including referral stats and notification settings.",
       "type": "object",
       "properties": {
-        "uid": {
-          "type": "string",
-          "description": "Firebase Auth user ID"
-        },
-        "email": {
-          "type": "string",
-          "description": "Account email address"
-        },
-        "displayName": {
-          "type": "string",
-          "maxLength": 100,
-          "description": "Full name or screen name"
-        },
-        "photoURL": {
-          "type": "string",
-          "description": "Profile picture URL"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "ISO timestamp of account creation"
-        },
-        "lastLoginAt": {
-          "type": "string",
-          "description": "ISO timestamp of last login"
-        },
-        "referralCode": {
-          "type": "string",
-          "description": "User unique referral code"
-        },
-        "referredBy": {
-          "type": "string",
-          "description": "Referral code used during registration"
-        },
-        "referralCount": {
-          "type": "number",
-          "description": "Number of users who registered using this code"
-        },
-        "referralPoints": {
-          "type": "number",
-          "description": "Total reward points earned"
-        },
-        "vipStatus": {
-          "type": "string",
-          "description": "VIP Tier: free, silver, gold, vip"
-        }
+        "uid": { "type": "string", "description": "Firebase Auth user ID" },
+        "email": { "type": "string", "description": "Account email address" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Full name or screen name" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of account creation" },
+        "lastLoginAt": { "type": "string", "description": "ISO timestamp of last login" },
+        "referralCode": { "type": "string", "description": "User unique referral code" },
+        "referredBy": { "type": "string", "description": "Referral code used during registration" },
+        "referralCount": { "type": "number", "description": "Number of users who registered using this code" },
+        "referralPoints": { "type": "number", "description": "Total reward points earned" },
+        "vipStatus": { "type": "string", "description": "VIP Tier: free, silver, gold, vip" },
+        "notificationsEnabled": { "type": "boolean", "description": "Whether push notifications are allowed by user" },
+        "emailNotificationsEnabled": { "type": "boolean", "description": "Whether email updates are allowed by user" }
       },
       "required": ["uid", "email", "createdAt", "referralCode"]
     },
@@ -58,31 +26,12 @@
       "description": "A saved movie in the user cloud library.",
       "type": "object",
       "properties": {
-        "movieId": {
-          "type": "string",
-          "description": "Movie TMDB or unique identifier"
-        },
-        "title": {
-          "type": "string",
-          "maxLength": 200,
-          "description": "Movie title"
-        },
-        "posterPath": {
-          "type": "string",
-          "description": "Poster image path or URL"
-        },
-        "rating": {
-          "type": "number",
-          "description": "User rating or TMDB score"
-        },
-        "year": {
-          "type": "string",
-          "description": "Release year"
-        },
-        "addedAt": {
-          "type": "string",
-          "description": "ISO timestamp of when bookmarked"
-        }
+        "movieId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "posterPath": { "type": "string" },
+        "rating": { "type": "number" },
+        "year": { "type": "string" },
+        "addedAt": { "type": "string" }
       },
       "required": ["movieId", "title", "addedAt"]
     },
@@ -97,20 +46,41 @@
         "createdAt": { "type": "string" }
       },
       "required": ["refereeUid", "createdAt"]
+    },
+    "Notification": {
+      "title": "Push Notification",
+      "description": "Admin push notification sent to users or email recipients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "description": "movie | match | reward | urgent | general" },
+        "target": { "type": "string", "description": "all | specific" },
+        "targetEmail": { "type": "string" },
+        "linkUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "sentBy": { "type": "string" }
+      },
+      "required": ["title", "message", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
-      "description": "Cloud user profile accessible by the authenticated owner"
+      "description": "Cloud user profile with referral and notification preferences"
     },
     "/users/{userId}/bookmarks/{bookmarkId}": {
       "schema": "Bookmark",
-      "description": "Private bookmarks for the user"
+      "description": "User saved bookmarks"
     },
     "/users/{userId}/referrals/{refId}": {
       "schema": "ReferralLog",
-      "description": "List of friends referred by this user"
+      "description": "List of invited friends"
+    },
+    "/notifications/{notifId}": {
+      "schema": "Notification",
+      "description": "Broadcast and targeted push notifications from BMW Cinema admin"
     }
   }
 }
