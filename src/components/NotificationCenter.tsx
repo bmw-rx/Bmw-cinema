@@ -11,13 +11,20 @@ import {
   ExternalLink,
   X,
   Volume2,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   AppNotification,
   fetchNotifications,
   requestNotificationPermission,
   getNotificationPermission,
+  subscribeToLiveNotifications,
+  playNotificationSound,
+  NOTIFICATION_SOUND_URL,
 } from '../services/notifications';
+import { subscribeToAuth } from '../services/auth';
+import { User } from 'firebase/auth';
 
 interface NotificationCenterProps {
   onNavigate?: (page: string) => void;
@@ -26,6 +33,7 @@ interface NotificationCenterProps {
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('bmw_read_notifs');
@@ -35,20 +43,37 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
     }
   });
   const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [loading, setLoading] = useState(false);
+  const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Auth state
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user);
+    });
+    return () => unsub();
+  }, []);
+
+  // Initial load & real-time subscription
   useEffect(() => {
     setPermission(getNotificationPermission());
     loadNotifications();
 
-    // Check for new notifications periodically (every 60s)
-    const interval = setInterval(() => {
-      loadNotifications();
-    }, 60000);
+    // Subscribe to live push notifications in real time via Firestore
+    const unsubscribeLive = subscribeToLiveNotifications(
+      currentUser?.email,
+      (newNotif) => {
+        setNotifications((prev) => {
+          if (prev.some((n) => n.id === newNotif.id)) return prev;
+          return [newNotif, ...prev];
+        });
+      }
+    );
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      unsubscribeLive();
+    };
+  }, [currentUser?.email]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -64,15 +89,22 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
   }, [isOpen]);
 
   const loadNotifications = async () => {
-    setLoading(true);
     const data = await fetchNotifications();
     setNotifications(data);
-    setLoading(false);
   };
 
   const handleRequestPermission = async () => {
     const perm = await requestNotificationPermission();
     setPermission(perm);
+  };
+
+  const handleTestSound = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPlayingTestSound(true);
+    await playNotificationSound();
+    setTimeout(() => {
+      setIsPlayingTestSound(false);
+    }, 2000);
   };
 
   const markAllAsRead = () => {
@@ -124,7 +156,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
 
       {/* Floating Dropdown Modal */}
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-[#141416] border border-zinc-800 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-[#141416] border border-zinc-800 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 text-left">
           {/* Header */}
           <div className="px-4 py-3 bg-[#18181b] border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -136,21 +168,51 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
                 </span>
               )}
             </div>
+
             <div className="flex items-center gap-2">
+              {/* Test Sound Button */}
+              <button
+                onClick={handleTestSound}
+                title="Test notification ringtone sound"
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                  isPlayingTestSound
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white'
+                }`}
+              >
+                <Volume2 className="w-3 h-3 text-[#ff6b35]" />
+                <span>{isPlayingTestSound ? 'Playing...' : 'Test Sound'}</span>
+              </button>
+
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 transition cursor-pointer"
+                  title="Mark all as read"
                 >
-                  <Check className="w-3 h-3" /> Mark all read
+                  <Check className="w-3 h-3" />
                 </button>
               )}
+
               <button
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          </div>
+
+          {/* Sound & Phone alert status banner */}
+          <div className="bg-[#111113] px-3.5 py-2 border-b border-zinc-800/80 flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-1.5 text-gray-400">
+              <Smartphone className="w-3.5 h-3.5 text-[#ff6b35]" />
+              <span>Phone Ringtone & Push</span>
+            </div>
+            <div className="flex items-center gap-1 text-emerald-400 font-semibold text-[10px]">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Active</span>
             </div>
           </div>
 
@@ -158,8 +220,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
           {permission !== 'granted' && (
             <div className="bg-gradient-to-r from-[#ff6b35]/15 to-transparent p-3 border-b border-zinc-800/80 flex items-center justify-between gap-2">
               <div className="text-left">
-                <p className="text-xs font-semibold text-white">Enable Push Alerts</p>
-                <p className="text-[10px] text-gray-400">Receive new movie releases and match kicks.</p>
+                <p className="text-xs font-semibold text-white">Enable Phone Alerts</p>
+                <p className="text-[10px] text-gray-400">Get instant ringtones for new movies & matches.</p>
               </div>
               <button
                 onClick={handleRequestPermission}
@@ -230,10 +292,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
           </div>
 
           {/* Footer */}
-          <div className="p-2.5 bg-[#0d0d0d] border-t border-zinc-800 text-center">
+          <div className="p-2.5 bg-[#0d0d0d] border-t border-zinc-800 flex items-center justify-between px-3">
             <span className="text-[10px] text-gray-500">
-              BMW CINEMA Push Delivery System
+              BMW CINEMA Push Delivery
             </span>
+            <button
+              onClick={handleTestSound}
+              className="text-[10px] text-[#ff6b35] hover:underline flex items-center gap-1 cursor-pointer font-medium"
+            >
+              <Volume2 className="w-3 h-3" />
+              <span>Ringtone Sound</span>
+            </button>
           </div>
         </div>
       )}

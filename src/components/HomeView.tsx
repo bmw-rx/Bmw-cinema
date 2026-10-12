@@ -11,6 +11,7 @@ import {
 import { HeroBanner } from './HeroBanner';
 import { MovieRow } from './MovieRow';
 import { MovieGrid } from './MovieGrid';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HomeViewProps {
   onSelectMovie: (movie: Movie) => void;
@@ -145,7 +146,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
         onDownload={onDownloadMovie}
       />
 
-      <div className="space-y-4 -mt-10 sm:-mt-14 relative z-20">
+      {/* PWA Install App Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-8 mb-6 relative z-20">
+        <PWAInstallButton variant="banner" />
+      </div>
+
+      <div className="space-y-4 relative z-20">
         {/* 2. Trending Now Section */}
         <MovieRow
           title="🔥 Trending Now"

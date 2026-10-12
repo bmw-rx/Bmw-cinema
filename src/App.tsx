@@ -12,6 +12,14 @@ import { AuthView } from './components/AuthView';
 import { AdminPanel } from './components/AdminPanel';
 import { Footer } from './components/Footer';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { PushNotificationToast } from './components/PushNotificationToast';
+import {
+  subscribeToLiveNotifications,
+  unlockNotificationAudio,
+  AppNotification,
+} from './services/notifications';
+import { subscribeToAuth } from './services/auth';
+import { User } from 'firebase/auth';
 
 export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin';
 
@@ -21,6 +29,43 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [filterGenreId, setFilterGenreId] = useState<number | undefined>(undefined);
   const [autoPlayPlayer, setAutoPlayPlayer] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activePushToast, setActivePushToast] = useState<AppNotification | null>(null);
+
+  // Auth observer
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => setCurrentUser(user));
+    return () => unsub();
+  }, []);
+
+  // Unlock audio context on user interaction (essential for mobile phones)
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      unlockNotificationAudio();
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
+
+  // Real-time live push notification subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToLiveNotifications(
+      currentUser?.email,
+      (newNotif) => {
+        setActivePushToast(newNotif);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser?.email]);
 
   // Initialize route from window.location (pathname, search params, or hash)
   useEffect(() => {
@@ -249,6 +294,13 @@ export default function App() {
 
       {/* Global Footer */}
       <Footer onNavigate={(p) => navigateTo(p)} />
+
+      {/* Real-time Phone Push Notification Toast */}
+      <PushNotificationToast
+        notification={activePushToast}
+        onClose={() => setActivePushToast(null)}
+        onNavigate={(p) => navigateTo(p as any)}
+      />
 
       {/* PWA Offline indicator */}
       <OfflineIndicator />

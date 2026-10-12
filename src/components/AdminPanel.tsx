@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Smartphone,
   Check,
+  Volume2,
 } from 'lucide-react';
 import { UserProfileData } from '../services/auth';
 import {
@@ -33,6 +34,10 @@ import {
   sendPushNotification,
   deleteNotification,
   showBrowserNotification,
+  showPhoneNotification,
+  playNotificationSound,
+  vibrateDevice,
+  NOTIFICATION_SOUND_URL,
 } from '../services/notifications';
 
 interface AdminPanelProps {
@@ -284,7 +289,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                   BMW CINEMA ADMIN PANEL
                 </h1>
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
-                  AUTHENTICATED (PIN: 3006)
+                  AUTHENTICATED ADMIN
                 </span>
               </div>
               <p className="text-xs text-gray-400">
@@ -809,9 +814,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                 )}
               </div>
 
+              {/* Ringtone Sound Preview */}
+              <div className="mt-5 pt-4 border-t border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Volume2 className="w-4 h-4 text-[#ff6b35]" />
+                    <span>Notification Ringtone Sound</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
+                    Active MP3
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 mb-3">
+                  Custom high-fidelity notification ringtone played on user phones when receiving alerts.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playNotificationSound();
+                      vibrateDevice([200, 100, 200]);
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-[#ff6b35]" />
+                    <span>Play Ringtone</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      vibrateDevice([300, 150, 300]);
+                      showPhoneNotification(title || '🎬 BMW CINEMA Alert', {
+                        body: message || 'Test notification with custom ringtone.',
+                      });
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-[#ff6b35]/20 hover:bg-[#ff6b35]/30 text-[#ff6b35] border border-[#ff6b35]/40 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Test Device Push</span>
+                  </button>
+                </div>
+              </div>
+
               {/* In-app Toast Preview */}
-              <div className="mt-6 pt-5 border-t border-zinc-800">
-                <h5 className="text-[11px] font-bold text-gray-400 mb-3">In-App Banner Notification</h5>
+              <div className="mt-5 pt-4 border-t border-zinc-800">
+                <h5 className="text-[11px] font-bold text-gray-400 mb-2">In-App Banner Notification Preview</h5>
                 <div className="p-3 bg-zinc-800/60 border border-zinc-700 rounded-xl flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-[#ff6b35]/20 text-[#ff6b35]">
                     <BellRing className="w-4 h-4" />
@@ -824,20 +873,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                   </div>
                 </div>
               </div>
-
-              {/* Test Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  showBrowserNotification(title || 'BMW CINEMA Test Push', {
-                    body: message || 'Test notification from BMW Cinema Admin Panel.',
-                  });
-                }}
-                className="mt-6 w-full py-2.5 rounded-xl border border-zinc-700 hover:border-[#ff6b35] bg-[#0d0d0d] text-gray-300 hover:text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <BellRing className="w-3.5 h-3.5 text-[#ff6b35]" />
-                <span>Test Browser Push On This Device</span>
-              </button>
             </div>
           </div>
         </div>

@@ -67,13 +67,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             >
               My Account
             </button>
-            <button
-              onClick={() => onNavigate && onNavigate('admin' as any)}
-              className="text-gray-500 hover:text-white transition-colors cursor-pointer"
-              title="Admin Access (/admin)"
-            >
-              Admin Portal
-            </button>
           </div>
         </div>
 

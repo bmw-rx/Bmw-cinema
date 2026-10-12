@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, Shield } from 'lucide-react';
+import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon } from 'lucide-react';
 import { getFavorites } from '../services/storage';
 import { subscribeToAuth } from '../services/auth';
 import { User } from 'firebase/auth';
@@ -214,20 +214,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
               </a>
             );
           })}
-
-          {/* Quick link to /admin in mobile menu */}
-          <div className="pt-2 border-t border-zinc-800/80">
-            <button
-              onClick={(e) => handleLinkClick(e, 'admin')}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-zinc-800/50 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-[#ff6b35]" />
-                <span>Admin Console (/admin)</span>
-              </div>
-              <span className="text-[10px] text-zinc-500 font-mono">Protected PIN: 3006</span>
-            </button>
-          </div>
         </div>
       )}
     </header>
