@@ -6,8 +6,12 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App singleton
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
+const firestoreDbId =
+  (firebaseConfig as any).firestoreDatabaseId ||
+  'ai-studio-bmwcinema-b4fc9406-4c29-4dc9-b165-b1219dd5832e';
+
 // Initialize Firestore with specific database ID
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = getFirestore(app, firestoreDbId);
 
 // Initialize Firebase Authentication
 export const auth = getAuth(app);

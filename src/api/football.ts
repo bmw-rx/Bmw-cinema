@@ -226,3 +226,39 @@ export async function getFixtureDetails(fixtureId: number | string): Promise<any
     return null;
   }
 }
+
+export const CHANNEL_1_LOGO = 'https://files.catbox.moe/7sslez.JPG';
+export const CHANNEL_1_STREAM_URL =
+  'https://live1.dyrur1.com/live/14387788_89854c7489d2f5fbf72167c7fd94fe1b_540p.m3u8';
+
+export interface TVChannel {
+  id: string;
+  name: string;
+  logo: string;
+  isLive: boolean;
+  streams: StreamChannel[];
+}
+
+export const DEFAULT_CHANNEL_1: TVChannel = {
+  id: 'channel-1',
+  name: 'Channel 1',
+  logo: CHANNEL_1_LOGO,
+  isLive: true,
+  streams: [
+    {
+      id: 'c1-live',
+      title: 'Live',
+      resolution: 'HD',
+      type: 'hls',
+      url: CHANNEL_1_STREAM_URL,
+    },
+  ],
+};
+
+/**
+ * Live TV Sports channel - strictly returns only the 1 requested channel
+ */
+export async function getSportsChannels(): Promise<TVChannel[]> {
+  return [DEFAULT_CHANNEL_1];
+}
+

@@ -215,6 +215,9 @@ export async function loginWithEmail(email: string, pass: string): Promise<UserP
  */
 export async function loginWithGoogle(referralCode?: string): Promise<UserProfileData> {
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account',
+  });
   const cred = await signInWithPopup(auth, provider);
   return await syncUserProfile(cred.user, undefined, referralCode);
 }

@@ -44,9 +44,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
 
   const navLinks = [
     { id: 'home' as const, label: 'Home', icon: Home, href: 'index.html' },
+    { id: 'football' as const, label: 'Live TV (Channel 1)', icon: Tv, href: 'football.html', isLive: true },
     { id: 'movies' as const, label: 'Movies', icon: Film, href: 'movies.html' },
-    { id: 'tvshows' as const, label: 'TV Shows', icon: Tv, href: 'tvshows.html' },
-    { id: 'football' as const, label: 'Football', icon: Activity, href: 'football.html', isLive: true },
+    { id: 'tvshows' as const, label: 'TV Shows', icon: Film, href: 'tvshows.html' },
     { id: 'search' as const, label: 'Search', icon: Search, href: 'search.html' },
     { id: 'favorites' as const, label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
     { id: 'auth' as const, label: currentUser ? 'Account' : 'Sign In', icon: UserIcon, href: 'auth.html' },

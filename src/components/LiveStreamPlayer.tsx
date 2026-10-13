@@ -1,83 +1,158 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize2, AlertCircle } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
 import { StreamChannel } from '../api/football';
 
 interface LiveStreamPlayerProps {
   streams: StreamChannel[];
   title?: string;
+  channelLogo?: string;
 }
 
-export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({ streams, title }) => {
-  const [selectedStream, setSelectedStream] = useState<StreamChannel>(streams[0]);
+export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
+  streams,
+  title,
+  channelLogo,
+}) => {
+  const [selectedStream, setSelectedStream] = useState<StreamChannel | null>(
+    streams[0] || null
+  );
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [useProxy, setUseProxy] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
+  // Keep selected stream synced with streams prop
   useEffect(() => {
-    if (streams.length > 0 && !streams.some(s => s.id === selectedStream?.id)) {
-      setSelectedStream(streams[0]);
+    if (streams.length > 0) {
+      const match = streams.find((s) => s.id === selectedStream?.id);
+      setSelectedStream(match || streams[0]);
     }
-  }, [streams, selectedStream]);
+  }, [streams, selectedStream?.id]);
 
-  useEffect(() => {
-    if (!selectedStream || !videoRef.current) return;
+  const initPlayer = useCallback(() => {
+    if (!selectedStream?.url || !videoRef.current) return;
     const video = videoRef.current;
+    const streamUrl = selectedStream.url;
+
+    setIsLoading(true);
     setHasError(false);
 
-    // Prefer proxy for worker-based CORS streaming if provided, otherwise raw url
-    const streamUrl = (useProxy && selectedStream.proxy) ? selectedStream.proxy : selectedStream.url;
+    // Clean up previous instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    // Modern browsers allow autoplay if muted
+    video.muted = isMuted;
 
     if (Hls.isSupported()) {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-      }
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
+        backBufferLength: 90,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        manifestLoadingTimeOut: 20000,
+        manifestLoadingMaxRetry: 6,
+        levelLoadingTimeOut: 20000,
+        levelLoadingMaxRetry: 6,
+        fragLoadingTimeOut: 20000,
+        fragLoadingMaxRetry: 6,
+        startLevel: -1,
+        xhrSetup: (xhr) => {
+          xhr.withCredentials = false;
+        },
       });
-      hlsRef.current = hls;
 
+      hlsRef.current = hls;
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+        setIsLoading(false);
+        video
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            // Autoplay with audio was blocked; muted autoplay ensures stream is running
+            video.muted = true;
+            setIsMuted(true);
+            video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+          });
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Try toggling proxy/direct on network fail
-              if (useProxy && selectedStream.url) {
-                setUseProxy(false);
-              } else {
-                setHasError(true);
-              }
+              hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError();
               break;
             default:
-              hls.destroy();
-              setHasError(true);
+              // Try falling back to native video tag
+              if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                hls.destroy();
+                hlsRef.current = null;
+                video.src = streamUrl;
+                video.load();
+                video
+                  .play()
+                  .then(() => {
+                    setIsPlaying(true);
+                    setIsLoading(false);
+                  })
+                  .catch(() => setHasError(true));
+              } else {
+                setHasError(true);
+                setIsLoading(false);
+              }
               break;
           }
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native Safari HLS
+      // Native Safari / iOS HLS
       video.src = streamUrl;
+      video.load();
       video.addEventListener('loadedmetadata', () => {
-        video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+        setIsLoading(false);
+        video
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            video.muted = true;
+            setIsMuted(true);
+            video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+          });
+      });
+      video.addEventListener('error', () => {
+        setHasError(true);
+        setIsLoading(false);
       });
     } else {
       setHasError(true);
+      setIsLoading(false);
     }
+  }, [selectedStream?.url, isMuted]);
+
+  useEffect(() => {
+    initPlayer();
 
     return () => {
       if (hlsRef.current) {
@@ -85,13 +160,15 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({ streams, tit
         hlsRef.current = null;
       }
     };
-  }, [selectedStream, useProxy]);
+  }, [initPlayer, retryCount]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
+      videoRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -100,121 +177,162 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({ streams, tit
 
   const toggleMute = () => {
     if (!videoRef.current) return;
-    videoRef.current.muted = !videoRef.current.muted;
-    setIsMuted(videoRef.current.muted);
+    const nextMuted = !videoRef.current.muted;
+    videoRef.current.muted = nextMuted;
+    setIsMuted(nextMuted);
+  };
+
+  const unmuteAndPlay = () => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = false;
+    setIsMuted(false);
+    videoRef.current
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch(() => {});
+  };
+
+  const handleReconnect = () => {
+    setHasError(false);
+    setIsLoading(true);
+    setRetryCount((prev) => prev + 1);
   };
 
   const toggleFullscreen = () => {
     if (!videoRef.current) return;
+    const container = videoRef.current.parentElement;
+    if (!container) return;
     if (document.fullscreenElement) {
-      document.exitFullscreen();
+      document.exitFullscreen().catch(() => {});
     } else {
-      videoRef.current.requestFullscreen();
+      container.requestFullscreen().catch(() => {});
     }
   };
 
   return (
-    <div className="bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#2a2a2a] shadow-2xl my-4">
-      <div className="relative aspect-video bg-black flex items-center justify-center group">
+    <div className="bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#2a2a2a] shadow-2xl my-2">
+      <div className="relative aspect-video bg-black flex items-center justify-center group overflow-hidden select-none">
         <video
           ref={videoRef}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain cursor-pointer"
           playsInline
+          autoPlay
+          muted={isMuted}
           controls={false}
-          onPlay={() => setIsPlaying(true)}
+          onClick={togglePlay}
+          onPlay={() => {
+            setIsPlaying(true);
+            setIsLoading(false);
+          }}
           onPause={() => setIsPlaying(false)}
+          onWaiting={() => setIsLoading(true)}
+          onPlaying={() => setIsLoading(false)}
         />
 
         {/* Live Badge Overlay */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-red-500/30">
+        <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-red-500/30 z-10 shadow-lg">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[11px] font-black uppercase text-red-400 tracking-wider">LIVE FEED</span>
-          {title && <span className="text-[11px] text-gray-300 border-l border-white/20 pl-2 ml-1">{title}</span>}
+          <span className="text-[11px] font-black uppercase text-red-400 tracking-wider">
+            LIVE
+          </span>
+          {title && (
+            <span className="text-[11px] text-gray-200 font-bold border-l border-white/20 pl-2 ml-1">
+              {title}
+            </span>
+          )}
         </div>
 
-        {/* Error Overlay */}
-        {hasError && (
-          <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 text-center z-20">
-            <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
-            <h4 className="text-white font-bold text-sm mb-1">Live Feed Buffering or Reconnecting</h4>
-            <p className="text-gray-400 text-xs max-w-sm mb-3">
-              The match stream is initializing or awaiting satellite link. Switch to another stream quality below.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setHasError(false);
-                  setUseProxy(!useProxy);
-                }}
-                className="px-3 py-1.5 bg-[#262626] hover:bg-[#333] text-xs font-semibold rounded-lg text-white transition-colors"
-              >
-                Switch Routing ({useProxy ? 'Direct' : 'Proxy'})
-              </button>
-            </div>
+        {/* Channel Logo Watermark */}
+        {channelLogo && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-md p-1.5 rounded-xl border border-white/10 z-10 shadow-lg">
+            <img
+              src={channelLogo}
+              alt="Channel"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/channel1-logo.jpg';
+              }}
+              className="w-7 h-7 object-cover rounded-lg"
+            />
           </div>
         )}
 
-        {/* Custom Video Controls Bar on Hover */}
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Unmute Prompt Banner if autoplaying muted */}
+        {isPlaying && isMuted && (
+          <button
+            onClick={unmuteAndPlay}
+            className="absolute top-14 left-3 flex items-center gap-2 bg-amber-500/90 hover:bg-amber-500 text-black px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg z-10 cursor-pointer"
+          >
+            <VolumeX className="w-3.5 h-3.5" />
+            <span>Tap to Unmute</span>
+          </button>
+        )}
+
+        {/* Center Loading Spinner */}
+        {isLoading && !hasError && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-15 pointer-events-none">
+            <Loader2 className="w-10 h-10 text-[#ff6b35] animate-spin mb-2" />
+            <span className="text-xs font-bold text-gray-300 tracking-wide">
+              Connecting Live Stream...
+            </span>
+          </div>
+        )}
+
+        {/* Big Center Play Button when paused and not error */}
+        {!isPlaying && !isLoading && !hasError && (
+          <button
+            onClick={togglePlay}
+            className="absolute inset-0 flex items-center justify-center z-15 cursor-pointer bg-black/30 hover:bg-black/40 transition-colors"
+          >
+            <div className="w-16 h-16 rounded-full bg-[#ff6b35] hover:bg-[#ff8354] flex items-center justify-center text-black shadow-2xl transition-transform hover:scale-105">
+              <Play className="w-7 h-7 fill-current ml-1" />
+            </div>
+          </button>
+        )}
+
+        {/* Error / Reconnect Overlay */}
+        {hasError && (
+          <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-6 text-center z-20">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-3 text-red-400">
+              <RefreshCw className="w-6 h-6" />
+            </div>
+            <h4 className="text-white font-bold text-sm mb-1">
+              Live Stream Connection
+            </h4>
+            <button
+              onClick={handleReconnect}
+              className="mt-3 px-4 py-2 bg-[#ff6b35] hover:bg-[#ff8354] text-xs font-bold rounded-xl text-black transition-colors cursor-pointer flex items-center gap-2 shadow-lg"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Stream</span>
+            </button>
+          </div>
+        )}
+
+        {/* Custom Video Controls Bar on Hover / Touch */}
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
             </button>
             <button
               onClick={toggleMute}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? <VolumeX className="w-4 h-4 text-amber-400" /> : <Volume2 className="w-4 h-4" />}
             </button>
-            <span className="text-xs text-gray-300 font-mono font-bold">
-              {selectedStream.resolution} {selectedStream.title}
-            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={toggleFullscreen}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Stream Qualities Ribbon */}
-      <div className="p-3 bg-[#141414] border-t border-[#262626] flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Available Streams:</span>
-          <div className="flex items-center gap-1.5">
-            {streams.map((stream, idx) => {
-              const isCurrent = stream.id === selectedStream.id;
-              return (
-                <button
-                  key={stream.id || idx}
-                  onClick={() => {
-                    setSelectedStream(stream);
-                    setHasError(false);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    isCurrent
-                      ? 'bg-[#ff6b35] text-black shadow-md shadow-[#ff6b35]/20'
-                      : 'bg-[#222] text-gray-300 hover:bg-[#333] hover:text-white border border-[#333]'
-                  }`}
-                >
-                  {stream.resolution || stream.title || `Stream ${idx + 1}`}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[11px] text-gray-400 font-mono">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-          <span>HLS Ultra Low Latency</span>
         </div>
       </div>
     </div>

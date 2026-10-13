@@ -227,6 +227,7 @@ export default function App() {
             onWatchMovie={handleWatchMovie}
             onDownloadMovie={handleDownloadMovie}
             onNavigateToMovies={handleNavigateToMovies}
+            onNavigateToChannel={() => navigateTo('football')}
           />
         )}
 

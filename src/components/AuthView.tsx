@@ -316,7 +316,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
           <span className="text-xs text-gray-500 font-mono flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            Secure Cloud Database
+            BMW CINEMA VIP Protection
           </span>
         </div>
 
