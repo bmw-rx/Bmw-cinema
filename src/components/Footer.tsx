@@ -68,6 +68,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               WhatsApp Bot
             </button>
             <button
+              onClick={() => onNavigate && onNavigate('adult' as any)}
+              className="text-gray-400 hover:text-[#ff6b35] transition-colors"
+            >
+              Adult
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate('auth')}
               className="text-[#ff6b35] hover:underline font-semibold transition-colors cursor-pointer"
             >

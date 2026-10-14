@@ -25,6 +25,7 @@ import {
   Smartphone,
   Check,
   Volume2,
+  Film,
 } from 'lucide-react';
 import { UserProfileData } from '../services/auth';
 import {
@@ -39,6 +40,11 @@ import {
   vibrateDevice,
   NOTIFICATION_SOUND_URL,
 } from '../services/notifications';
+import {
+  getAdultEndpoint,
+  saveAdultEndpoint,
+  fetchAdultVideos,
+} from '../services/adultService';
 
 interface AdminPanelProps {
   onBackToHome: () => void;
@@ -52,7 +58,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
   });
   const [passcode, setPasscode] = useState('');
   const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'push' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'push' | 'logs' | 'endpoint'>('users');
+
+  // Adult Endpoint state
+  const [adultEndpoint, setAdultEndpoint] = useState('');
+  const [savingEndpoint, setSavingEndpoint] = useState(false);
+  const [endpointStatus, setEndpointStatus] = useState<string | null>(null);
+  const [testingEndpoint, setTestingEndpoint] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   // Users data
   const [users, setUsers] = useState<UserProfileData[]>([]);
@@ -93,13 +106,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
     setIsAuthenticated(false);
   };
 
-  // Load registered users and notification history once unlocked
+  // Load registered users, notification history, and adult endpoint once unlocked
   useEffect(() => {
     if (isAuthenticated) {
       loadUsers();
       loadNotificationLogs();
+      loadEndpoint();
     }
   }, [isAuthenticated]);
+
+  const loadEndpoint = async () => {
+    const ep = await getAdultEndpoint();
+    setAdultEndpoint(ep);
+  };
+
+  const handleSaveEndpoint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingEndpoint(true);
+    setEndpointStatus(null);
+    await saveAdultEndpoint(adultEndpoint);
+    setSavingEndpoint(false);
+    setEndpointStatus('Endpoint saved and synchronized successfully!');
+    setTimeout(() => setEndpointStatus(null), 4000);
+  };
+
+  const handleTestEndpoint = async () => {
+    setTestingEndpoint(true);
+    setTestResult(null);
+    // Temporarily save to make sure test uses current value
+    await saveAdultEndpoint(adultEndpoint);
+    const res = await fetchAdultVideos();
+    setTestingEndpoint(false);
+    if (res.success) {
+      setTestResult(`Success: Retrieved ${res.videos.length} videos from endpoint.`);
+    } else {
+      setTestResult(`Error: ${res.error || 'Failed to fetch'}`);
+    }
+  };
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -405,6 +448,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
         >
           <BellRing className="w-4 h-4" />
           <span>History & Logs ({notifications.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('endpoint')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
+            activeTab === 'endpoint'
+              ? 'bg-[#ff6b35] text-black shadow-md shadow-[#ff6b35]/20'
+              : 'text-gray-400 hover:text-white hover:bg-zinc-800'
+          }`}
+        >
+          <Film className="w-4 h-4" />
+          <span>Adult Endpoint</span>
         </button>
       </div>
 
@@ -945,6 +1000,91 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 4: ADULT VIDEO ENDPOINT SETTINGS */}
+      {/* ======================================================== */}
+      {activeTab === 'endpoint' && (
+        <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Film className="w-5 h-5 text-[#ff6b35]" />
+                <span>Adult Video Endpoint Configuration</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Configure the dynamic endpoint for adult videos. The API automatically returns thumbnails, video links, and download streams.
+              </p>
+            </div>
+
+            <a
+              href="adult.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-200 hover:text-white text-xs font-semibold border border-zinc-700 transition"
+            >
+              <span>Preview Adult Page</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <form onSubmit={handleSaveEndpoint} className="space-y-4 max-w-2xl">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                API Endpoint (Path or Full URL)
+              </label>
+              <input
+                type="text"
+                value={adultEndpoint}
+                onChange={(e) => setAdultEndpoint(e.target.value)}
+                placeholder="e.g. /endpoints/adult or https://apis.davidcyril.name.ng/endpoints/adult"
+                className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 font-mono transition-colors"
+              />
+              <p className="text-[11px] text-gray-500 mt-1.5">
+                Relative paths will automatically route through the secure API engine with the preconfigured API key.
+              </p>
+            </div>
+
+            {endpointStatus && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{endpointStatus}</span>
+              </div>
+            )}
+
+            {testResult && (
+              <div className={`p-3.5 rounded-xl text-xs font-mono flex items-center gap-2 animate-fade-in ${
+                testResult.startsWith('Success')
+                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-red-500/10 border border-red-500/30 text-red-300'
+              }`}>
+                <span>{testResult}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={savingEndpoint}
+                className="px-6 py-3 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-[#ff6b35]/20 cursor-pointer flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>{savingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestEndpoint}
+                disabled={testingEndpoint || !adultEndpoint.trim()}
+                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-gray-200 hover:text-white font-semibold text-xs border border-zinc-700 transition cursor-pointer flex items-center gap-2"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${testingEndpoint ? 'animate-spin text-[#ff6b35]' : ''}`} />
+                <span>{testingEndpoint ? 'Testing Connection...' : 'Test Endpoint'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -43,5 +43,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // App configuration & dynamic media endpoints
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

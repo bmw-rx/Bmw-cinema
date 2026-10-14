@@ -11,6 +11,7 @@ import { MovieDetailView } from './components/MovieDetailView';
 import { AuthView } from './components/AuthView';
 import { AdminPanel } from './components/AdminPanel';
 import { WhatsAppBotView } from './components/WhatsAppBotView';
+import { AdultView } from './components/AdultView';
 import { Footer } from './components/Footer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PushNotificationToast } from './components/PushNotificationToast';
@@ -22,7 +23,7 @@ import {
 import { subscribeToAuth } from './services/auth';
 import { User } from 'firebase/auth';
 
-export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot';
+export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
@@ -141,6 +142,15 @@ export default function App() {
         return;
       }
 
+      if (
+        path.includes('adult') ||
+        hash === '#adult' ||
+        params.get('page') === 'adult'
+      ) {
+        setCurrentPage('adult');
+        return;
+      }
+
       // Check if global page marker was set in standalone HTML file
       const bmwPage = (window as any).BMW_PAGE;
       if (bmwPage === 'admin') setCurrentPage('admin');
@@ -150,6 +160,7 @@ export default function App() {
       else if (bmwPage === 'search') setCurrentPage('search');
       else if (bmwPage === 'auth') setCurrentPage('auth');
       else if (bmwPage === 'whatsappbot') setCurrentPage('whatsappbot');
+      else if (bmwPage === 'adult') setCurrentPage('adult');
       else if (bmwPage === 'movie') {
         setSelectedMovieId(Number(params.get('id') || 550));
         setCurrentPage('movie');
@@ -310,6 +321,10 @@ export default function App() {
             currentUser={currentUser}
             onNavigateToAuth={() => navigateTo('auth')}
           />
+        )}
+
+        {currentPage === 'adult' && (
+          <AdultView />
         )}
       </main>
 

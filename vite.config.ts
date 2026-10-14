@@ -119,6 +119,7 @@ export default defineConfig(() => {
           admin: path.resolve(__dirname, 'admin.html'),
           whatsappbot: path.resolve(__dirname, 'whatsapp-bot.html'),
           whatsappbotDirect: path.resolve(__dirname, 'whatsappbot.html'),
+          adult: path.resolve(__dirname, 'adult.html'),
         },
       },
     },

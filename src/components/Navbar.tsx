@@ -7,8 +7,8 @@ import { PWAInstallButton } from './PWAInstallButton';
 import { NotificationCenter } from './NotificationCenter';
 
 interface NavbarProps {
-  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot';
-  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth' | 'admin' | 'whatsappbot') => void;
+  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
+  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth' | 'admin' | 'whatsappbot' | 'adult') => void;
   onOpenSearch?: () => void;
 }
 
@@ -47,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     { id: 'football' as const, label: 'Live TV (Channel 1)', icon: Tv, href: 'football.html', isLive: true },
     { id: 'movies' as const, label: 'Movies', icon: Film, href: 'movies.html' },
     { id: 'tvshows' as const, label: 'TV Shows', icon: Film, href: 'tvshows.html' },
+    { id: 'adult' as const, label: 'Adult', icon: Film, href: 'adult.html' },
     { id: 'whatsappbot' as const, label: 'WhatsApp Bot', icon: MessageSquare, href: 'whatsapp-bot.html' },
     { id: 'search' as const, label: 'Search', icon: Search, href: 'search.html' },
     { id: 'favorites' as const, label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
