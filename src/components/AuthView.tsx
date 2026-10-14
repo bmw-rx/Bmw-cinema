@@ -76,8 +76,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
-  const [copiedDomain, setCopiedDomain] = useState(false);
   const [pushEnabled, setPushEnabled] = useState<boolean>(true);
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState<boolean>(true);
   const [notifUpdating, setNotifUpdating] = useState(false);
@@ -128,7 +126,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const clearMessages = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
-    setUnauthorizedDomain(null);
   };
 
   const handleTabChange = (tab: AuthTab) => {
@@ -145,7 +142,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       return 'Account sign-in method is currently completing activation. Please verify your Email/Password configuration.';
     }
     if (msg.includes('auth/unauthorized-domain')) {
-      return `Domain (${window.location.hostname}) is awaiting OAuth domain whitelist in Firebase Console. You can sign in and register directly with Email & Password below without any domain authorization!`;
+      return 'Google Sign-In is waiting for domain verification. Please sign in with your Email and Password below.';
     }
     if (msg.includes('auth/invalid-email')) return 'Invalid email address format. Please enter a valid email.';
     if (msg.includes('auth/user-not-found') || msg.includes('auth/wrong-password') || msg.includes('auth/invalid-credential')) {
@@ -231,10 +228,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
       setSuccessMsg('Signed in successfully with Google!');
     } catch (err: any) {
       const errStr = `${err?.code || ''} ${err?.message || ''}`;
-      if (errStr.includes('auth/unauthorized-domain')) {
-        setUnauthorizedDomain(window.location.hostname);
+      if (errStr.includes('auth/popup-closed-by-user')) {
+        setErrorMsg('Sign-in popup was closed before completion. Please try again.');
+      } else {
+        setErrorMsg(getCleanErrorMessage(err));
       }
-      setErrorMsg(getCleanErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -687,41 +685,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </div>
               )}
 
-              {/* Domain Authorization Helper Box */}
-              {unauthorizedDomain && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5 text-xs text-amber-200 animate-fade-in">
-                  <div className="flex items-center gap-2 font-bold text-amber-400">
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span>Domain Authorization Info (Google Sign-In)</span>
-                  </div>
-                  <p className="text-[12px] leading-relaxed text-gray-300">
-                    Google Sign-In requires your current app domain to be added to Firebase Authorized Domains.
-                    <strong className="text-white block mt-1">
-                      👉 Or simply enter your Email and Password below to sign in or register instantly without domain restrictions!
-                    </strong>
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      readOnly
-                      value={unauthorizedDomain}
-                      className="bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-mono text-gray-300 flex-1 truncate focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(unauthorizedDomain);
-                        setCopiedDomain(true);
-                        setTimeout(() => setCopiedDomain(false), 2500);
-                      }}
-                      className="px-3 py-1.5 bg-[#ff6b35] hover:bg-[#ff8354] text-black font-bold text-xs rounded-lg transition-colors shrink-0"
-                    >
-                      {copiedDomain ? 'Copied Domain!' : 'Copy Domain'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {successMsg && (
                 <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-3 text-emerald-400 text-xs sm:text-sm animate-fade-in">
                   <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
@@ -729,14 +692,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </div>
               )}
 
-              {/* One-Click Google Sign In (for login & register) */}
+              {/* One-Click Google Sign In */}
               {activeTab !== 'forgot' && (
                 <>
                   <button
                     type="button"
                     onClick={handleGoogleAuth}
                     disabled={loading}
-                    className="w-full py-3 px-4 bg-[#1f1f1f] hover:bg-[#282828] text-white font-medium rounded-xl flex items-center justify-center gap-3 border border-[#333] transition-colors text-sm shadow-sm"
+                    className="w-full py-3 px-4 bg-[#1f1f1f] hover:bg-[#282828] text-white font-medium rounded-xl flex items-center justify-center gap-3 border border-[#333] transition-colors text-sm shadow-sm cursor-pointer"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path
@@ -762,7 +725,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   <div className="relative flex items-center justify-center">
                     <div className="border-t border-[#2d2d2d] w-full" />
                     <span className="bg-[#141414] px-3 text-[11px] uppercase tracking-wider text-gray-500 font-semibold absolute">
-                      or use email
+                      or continue with email
                     </span>
                   </div>
                 </>
@@ -1003,7 +966,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
             {/* CARD FOOTER */}
             <div className="px-6 py-4 bg-[#111] border-t border-[#222] text-center text-xs text-gray-500">
-              Your data is securely protected by High-Grade Cloud Authentication & Encrypted Storage.
+              Your account and viewing preferences are securely encrypted.
             </div>
           </div>
         )}
