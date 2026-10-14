@@ -10,6 +10,7 @@ import { FavoritesView } from './components/FavoritesView';
 import { MovieDetailView } from './components/MovieDetailView';
 import { AuthView } from './components/AuthView';
 import { AdminPanel } from './components/AdminPanel';
+import { WhatsAppBotView } from './components/WhatsAppBotView';
 import { Footer } from './components/Footer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PushNotificationToast } from './components/PushNotificationToast';
@@ -21,7 +22,7 @@ import {
 import { subscribeToAuth } from './services/auth';
 import { User } from 'firebase/auth';
 
-export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin';
+export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
@@ -129,6 +130,17 @@ export default function App() {
         return;
       }
 
+      if (
+        path.includes('whatsapp') ||
+        hash === '#whatsappbot' ||
+        hash === '#whatsapp-bot' ||
+        params.get('page') === 'whatsappbot' ||
+        params.get('page') === 'whatsapp-bot'
+      ) {
+        setCurrentPage('whatsappbot');
+        return;
+      }
+
       // Check if global page marker was set in standalone HTML file
       const bmwPage = (window as any).BMW_PAGE;
       if (bmwPage === 'admin') setCurrentPage('admin');
@@ -137,6 +149,7 @@ export default function App() {
       else if (bmwPage === 'tvshows') setCurrentPage('tvshows');
       else if (bmwPage === 'search') setCurrentPage('search');
       else if (bmwPage === 'auth') setCurrentPage('auth');
+      else if (bmwPage === 'whatsappbot') setCurrentPage('whatsappbot');
       else if (bmwPage === 'movie') {
         setSelectedMovieId(Number(params.get('id') || 550));
         setCurrentPage('movie');
@@ -289,6 +302,13 @@ export default function App() {
           <AdminPanel
             onBackToHome={() => navigateTo('home')}
             onNavigateToMovie={(id) => navigateTo('movie', id)}
+          />
+        )}
+
+        {currentPage === 'whatsappbot' && (
+          <WhatsAppBotView
+            currentUser={currentUser}
+            onNavigateToAuth={() => navigateTo('auth')}
           />
         )}
       </main>

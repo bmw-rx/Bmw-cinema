@@ -62,6 +62,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               My List
             </button>
             <button
+              onClick={() => onNavigate && onNavigate('whatsappbot' as any)}
+              className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+            >
+              WhatsApp Bot
+            </button>
+            <button
               onClick={() => onNavigate && onNavigate('auth')}
               className="text-[#ff6b35] hover:underline font-semibold transition-colors cursor-pointer"
             >

@@ -117,6 +117,8 @@ export default defineConfig(() => {
           football: path.resolve(__dirname, 'football.html'),
           auth: path.resolve(__dirname, 'auth.html'),
           admin: path.resolve(__dirname, 'admin.html'),
+          whatsappbot: path.resolve(__dirname, 'whatsapp-bot.html'),
+          whatsappbotDirect: path.resolve(__dirname, 'whatsappbot.html'),
         },
       },
     },
