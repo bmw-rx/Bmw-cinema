@@ -3,7 +3,7 @@
  * Automatic background integration for streaming and silent download resolution
  */
 
-const BASE_URL = 'https://apis.davidcyril.name.ng';
+const BASE_URL = 'https://apis.davidcyriltech.my.id';
 const API_KEY = 'dc_live_StN6vUfPUWD51DmXqxBu6tj7snF9Ni4O';
 
 export interface AutoDownloadOption {
@@ -46,6 +46,9 @@ export function getQueryVariants(title: string): string[] {
  * Helper to fetch with API key, with transparent fallback if key limit is reached
  */
 async function fetchEndpoint(url: string, withKey: boolean = true): Promise<any> {
+  // Normalize URL to active domain if legacy domain appears
+  const cleanUrl = url.replace(/apis\.davidcyril\.name\.ng/g, 'apis.davidcyriltech.my.id');
+
   const headers: Record<string, string> = withKey
     ? {
         'X-API-Key': API_KEY,
@@ -56,19 +59,27 @@ async function fetchEndpoint(url: string, withKey: boolean = true): Promise<any>
       };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(cleanUrl, {
       method: 'GET',
       headers,
     });
 
     if (response.status === 429 && withKey) {
       // Key rate limit / monthly quota reached, retry transparently without key
-      return fetchEndpoint(url, false);
+      return fetchEndpoint(cleanUrl, false);
     }
 
     if (response.ok) {
-      const data = await response.json();
-      return data;
+      const text = await response.text();
+      if (!text || text.trim().startsWith('<')) {
+        return null;
+      }
+      try {
+        const data = JSON.parse(text);
+        return data;
+      } catch (parseErr) {
+        return null;
+      }
     }
   } catch (e) {
     // Network or CORS issue, fall through

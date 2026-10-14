@@ -12,7 +12,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
-import { AdultVideoItem, fetchAdultVideos } from '../services/adultService';
+import { AdultVideoItem, fetchAdultVideos, resolveVideoDetails } from '../services/adultService';
 
 export const AdultView: React.FC = () => {
   const [videos, setVideos] = useState<AdultVideoItem[]>([]);
@@ -21,6 +21,7 @@ export const AdultView: React.FC = () => {
   const [activeVideo, setActiveVideo] = useState<AdultVideoItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const loadVideos = async (query = '') => {
     setLoading(true);
@@ -28,10 +29,13 @@ export const AdultView: React.FC = () => {
     const res = await fetchAdultVideos(query);
     if (res.success) {
       setVideos(res.videos);
+      if (res.videos.length === 0) {
+        setErrorNotice(null);
+      }
     } else {
       setVideos([]);
       if (res.error) {
-        setErrorNotice('Unable to load media content at this time.');
+        setErrorNotice(res.error);
       }
     }
     setLoading(false);
@@ -46,8 +50,29 @@ export const AdultView: React.FC = () => {
     loadVideos(searchQuery);
   };
 
+  const handlePlayVideo = async (video: AdultVideoItem) => {
+    if (!video.downloadUrl && video.rawUrl) {
+      setResolvingId(video.id);
+      const details = await resolveVideoDetails(video.rawUrl);
+      setResolvingId(null);
+      if (details) {
+        const updated: AdultVideoItem = {
+          ...video,
+          downloadUrl: details.downloadUrl || video.downloadUrl,
+          thumbnail: details.thumbnail || video.thumbnail,
+          duration: details.duration || video.duration,
+          views: details.views || video.views,
+        };
+        setVideos((prev) => prev.map((v) => (v.id === video.id ? updated : v)));
+        setActiveVideo(updated);
+        return;
+      }
+    }
+    setActiveVideo(video);
+  };
+
   const handleShare = async (video: AdultVideoItem) => {
-    const shareUrl = video.downloadUrl || window.location.href;
+    const shareUrl = video.downloadUrl || video.rawUrl || window.location.href;
     const shareData = {
       title: video.title,
       text: `Watch ${video.title} on BMW CINEMA`,
@@ -72,10 +97,28 @@ export const AdultView: React.FC = () => {
     }
   };
 
-  const handleDownload = (video: AdultVideoItem) => {
-    if (!video.downloadUrl) return;
+  const handleDownload = async (video: AdultVideoItem) => {
+    let dlUrl = video.downloadUrl;
+    if (!dlUrl && video.rawUrl) {
+      setResolvingId(video.id);
+      const details = await resolveVideoDetails(video.rawUrl);
+      setResolvingId(null);
+      if (details?.downloadUrl) {
+        dlUrl = details.downloadUrl;
+        const updated: AdultVideoItem = {
+          ...video,
+          downloadUrl: details.downloadUrl,
+          thumbnail: details.thumbnail || video.thumbnail,
+          duration: details.duration || video.duration,
+          views: details.views || video.views,
+        };
+        setVideos((prev) => prev.map((v) => (v.id === video.id ? updated : v)));
+      }
+    }
+
+    if (!dlUrl) return;
     const link = document.createElement('a');
-    link.href = video.downloadUrl;
+    link.href = dlUrl;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.download = `${video.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
@@ -170,7 +213,7 @@ export const AdultView: React.FC = () => {
             >
               {/* Thumbnail Container */}
               <div
-                onClick={() => setActiveVideo(video)}
+                onClick={() => handlePlayVideo(video)}
                 className="relative aspect-video w-full bg-[#0a0a0a] overflow-hidden cursor-pointer"
               >
                 {video.thumbnail ? (
@@ -188,7 +231,11 @@ export const AdultView: React.FC = () => {
 
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                   <div className="w-12 h-12 rounded-full bg-[#ff6b35] text-black flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                    <Play className="w-5 h-5 fill-black ml-0.5" />
+                    {resolvingId === video.id ? (
+                      <RefreshCw className="w-5 h-5 text-black animate-spin" />
+                    ) : (
+                      <Play className="w-5 h-5 fill-black ml-0.5" />
+                    )}
                   </div>
                 </div>
 
@@ -209,7 +256,7 @@ export const AdultView: React.FC = () => {
               {/* Card Body */}
               <div className="p-4 flex flex-col flex-grow justify-between space-y-3">
                 <h3
-                  onClick={() => setActiveVideo(video)}
+                  onClick={() => handlePlayVideo(video)}
                   title={video.title}
                   className="font-bold text-sm text-white hover:text-[#ff6b35] transition-colors line-clamp-2 cursor-pointer"
                 >
@@ -221,12 +268,16 @@ export const AdultView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleDownload(video)}
-                    disabled={!video.downloadUrl}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#202020] hover:bg-[#ff6b35] text-gray-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer"
+                    disabled={resolvingId === video.id}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#202020] hover:bg-[#ff6b35] text-gray-200 hover:text-black font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50"
                     title="Download video"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
+                    {resolvingId === video.id ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#ff6b35]" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>{resolvingId === video.id ? 'Loading...' : 'Download'}</span>
                   </button>
 
                   <button

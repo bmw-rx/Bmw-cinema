@@ -124,7 +124,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
     e.preventDefault();
     setSavingEndpoint(true);
     setEndpointStatus(null);
-    await saveAdultEndpoint(adultEndpoint);
+    let clean = adultEndpoint.trim();
+    if (clean.includes('apis.davidcyril.name.ng')) {
+      clean = clean.replace(/apis\.davidcyril\.name\.ng/g, 'apis.davidcyriltech.my.id');
+      setAdultEndpoint(clean);
+    }
+    await saveAdultEndpoint(clean);
     setSavingEndpoint(false);
     setEndpointStatus('Endpoint saved and synchronized successfully!');
     setTimeout(() => setEndpointStatus(null), 4000);
@@ -133,8 +138,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
   const handleTestEndpoint = async () => {
     setTestingEndpoint(true);
     setTestResult(null);
-    // Temporarily save to make sure test uses current value
-    await saveAdultEndpoint(adultEndpoint);
+    let clean = adultEndpoint.trim();
+    if (clean.includes('apis.davidcyril.name.ng')) {
+      clean = clean.replace(/apis\.davidcyril\.name\.ng/g, 'apis.davidcyriltech.my.id');
+      setAdultEndpoint(clean);
+    }
+    await saveAdultEndpoint(clean);
     const res = await fetchAdultVideos();
     setTestingEndpoint(false);
     if (res.success) {
@@ -1033,17 +1042,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
           <form onSubmit={handleSaveEndpoint} className="space-y-4 max-w-2xl">
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                API Endpoint (Path or Full URL)
+                API Endpoint (JSON Path or Full URL)
               </label>
               <input
                 type="text"
                 value={adultEndpoint}
                 onChange={(e) => setAdultEndpoint(e.target.value)}
-                placeholder="e.g. /endpoints/adult or https://apis.davidcyril.name.ng/endpoints/adult"
+                placeholder="e.g. /search/xnxx or https://apis.davidcyriltech.my.id/search/xnxx"
                 className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 font-mono transition-colors"
               />
-              <p className="text-[11px] text-gray-500 mt-1.5">
-                Relative paths will automatically route through the secure API engine with the preconfigured API key.
+              <div className="flex items-center gap-2 flex-wrap mt-2">
+                <span className="text-[11px] text-gray-500">Quick presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setAdultEndpoint('/search/xnxx')}
+                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-[#ff6b35] border border-zinc-700 cursor-pointer transition"
+                >
+                  /search/xnxx
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdultEndpoint('https://apis.davidcyriltech.my.id/search/xnxx')}
+                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-gray-300 border border-zinc-700 cursor-pointer transition"
+                >
+                  https://apis.davidcyriltech.my.id/search/xnxx
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2">
+                Please enter a JSON API endpoint. Documentation pages (e.g. /endpoints/search) return HTML and will be rejected.
               </p>
             </div>
 
