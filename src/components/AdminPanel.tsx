@@ -34,6 +34,12 @@ import {
   Copy,
   Clock,
   Layers,
+  Share2,
+  Settings,
+  Sliders,
+  Repeat,
+  Tv,
+  VolumeX,
 } from 'lucide-react';
 import { UserProfileData } from '../services/auth';
 import {
@@ -91,6 +97,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
   const [newQuality, setNewQuality] = useState('1080p Full HD');
   const [previewVideo, setPreviewVideo] = useState<AdultVideoItem | null>(null);
   const [copiedVideoId, setCopiedVideoId] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [previewSpeed, setPreviewSpeed] = useState<number>(1.0);
+  const [previewLoop, setPreviewLoop] = useState<boolean>(false);
+  const [previewFit, setVideoFit] = useState<'contain' | 'cover'>('contain');
+  const [showPreviewSettings, setShowPreviewSettings] = useState<boolean>(false);
 
   // Users data
   const [users, setUsers] = useState<UserProfileData[]>([]);
@@ -184,14 +195,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
     setCustomAdultVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
-  const handleCopyVideoLink = async (videoId: string, url: string) => {
+  /**
+   * Generates protected website player URL
+   * NEVER shares the raw uploaded media / storage URL directly
+   */
+  const getWebsiteVideoShareUrl = (videoId: string) => {
+    const origin = window.location.origin;
+    return `${origin}/?page=adult&v=${encodeURIComponent(videoId)}`;
+  };
+
+  const handleCopyVideoLink = async (video: AdultVideoItem) => {
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedVideoId(videoId);
-      setTimeout(() => setCopiedVideoId(null), 2000);
+      const shareUrl = getWebsiteVideoShareUrl(video.id);
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedVideoId(video.id);
+      setShareNotice(`Link ya video ya kushare imenakiliwa! Mtazamaji atapelekwa moja kwa moja kwenye video hii na video player yenye stream settings (link ya faili uliloupload haitotolewa).`);
+      setTimeout(() => {
+        setCopiedVideoId(null);
+        setShareNotice(null);
+      }, 4500);
     } catch (e) {
       // ignore
     }
+  };
+
+  const handleShareVideoDirect = async (video: AdultVideoItem) => {
+    const shareUrl = getWebsiteVideoShareUrl(video.id);
+    const shareData = {
+      title: `${video.title} - BMW CINEMA`,
+      text: `Tazama "${video.title}" kwenye BMW CINEMA:`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShareNotice('Link ya video imeshirikiwa kwa mafanikio!');
+        setTimeout(() => setShareNotice(null), 3000);
+        return;
+      } catch (e) {
+        // Fallback to clipboard
+      }
+    }
+
+    handleCopyVideoLink(video);
   };
 
   const loadEndpoint = async () => {
@@ -1099,6 +1146,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
       {/* ======================================================== */}
       {activeTab === 'endpoint' && (
         <div className="space-y-6">
+          {shareNotice && (
+            <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-xs text-emerald-300 font-semibold flex items-center gap-3 shadow-lg shadow-emerald-500/10 animate-fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <div className="flex-1">
+                <p>{shareNotice}</p>
+                <p className="text-[10px] text-emerald-400/80 font-normal mt-0.5">
+                  Link hii itamfungulia mtazamaji video hii kwenye BMW CINEMA moja kwa moja bila kufichua faili uliloweka.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Header & Quick Stats */}
           <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 mb-6">
@@ -1468,9 +1527,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
 
                         <button
                           type="button"
-                          onClick={() => handleCopyVideoLink(video.id, video.downloadUrl)}
+                          onClick={() => handleShareVideoDirect(video)}
+                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-[#ff6b35] hover:text-black text-gray-300 transition cursor-pointer"
+                          title="Share BMW CINEMA player link (protects raw file URL)"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyVideoLink(video)}
                           className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white transition cursor-pointer"
-                          title="Copy direct video link"
+                          title="Copy BMW CINEMA viewer link (protects raw file URL)"
                         >
                           {copiedVideoId === video.id ? (
                             <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -1610,8 +1678,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-[#111] border-t border-[#222]">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between p-4 bg-[#111] border-t border-[#222] gap-3">
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold">
                       <Eye className="w-3.5 h-3.5" />
                       <span>
@@ -1626,15 +1694,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                     </span>
                   </div>
 
-                  <a
-                    href={previewVideo.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black text-xs font-bold transition cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Open Direct File</span>
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyVideoLink(previewVideo)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-200 text-xs font-semibold border border-zinc-700 transition cursor-pointer"
+                      title="Copy protected video player link (never reveals uploaded file URL)"
+                    >
+                      {copiedVideoId === previewVideo.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Link Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Viewer Link</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleShareVideoDirect(previewVideo)}
+                      className="p-1.5 rounded-xl bg-zinc-800 hover:bg-[#ff6b35] hover:text-black text-gray-200 text-xs font-semibold border border-zinc-700 transition cursor-pointer"
+                      title="Share video link"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    <a
+                      href={`/?page=adult&v=${encodeURIComponent(previewVideo.id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black text-xs font-bold transition cursor-pointer shadow-md shadow-[#ff6b35]/20"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Watch in Adult Cinema</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>

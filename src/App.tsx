@@ -142,10 +142,13 @@ export default function App() {
         return;
       }
 
+      const adultVideoParam = params.get('v') || params.get('video');
       if (
         path.includes('adult') ||
         hash === '#adult' ||
-        params.get('page') === 'adult'
+        hash.startsWith('#adult') ||
+        params.get('page') === 'adult' ||
+        Boolean(adultVideoParam)
       ) {
         setCurrentPage('adult');
         return;
