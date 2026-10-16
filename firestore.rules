@@ -49,5 +49,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Custom adult videos & view tracking
+    match /adult_videos/{videoId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

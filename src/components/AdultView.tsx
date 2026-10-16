@@ -11,8 +11,14 @@ import {
   ExternalLink,
   Clock,
   Sparkles,
+  Eye,
 } from 'lucide-react';
-import { AdultVideoItem, fetchAdultVideos, resolveVideoDetails } from '../services/adultService';
+import {
+  AdultVideoItem,
+  fetchAdultVideos,
+  resolveVideoDetails,
+  incrementAdultVideoViews,
+} from '../services/adultService';
 
 export const AdultView: React.FC = () => {
   const [videos, setVideos] = useState<AdultVideoItem[]>([]);
@@ -51,6 +57,15 @@ export const AdultView: React.FC = () => {
   };
 
   const handlePlayVideo = async (video: AdultVideoItem) => {
+    // Increment views in Firestore
+    incrementAdultVideoViews(video.id).then((newViews) => {
+      if (newViews !== null) {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === video.id ? { ...v, views: newViews } : v))
+        );
+      }
+    });
+
     if (!video.downloadUrl && video.rawUrl) {
       setResolvingId(video.id);
       const details = await resolveVideoDetails(video.rawUrl);
@@ -255,13 +270,28 @@ export const AdultView: React.FC = () => {
 
               {/* Card Body */}
               <div className="p-4 flex flex-col flex-grow justify-between space-y-3">
-                <h3
-                  onClick={() => handlePlayVideo(video)}
-                  title={video.title}
-                  className="font-bold text-sm text-white hover:text-[#ff6b35] transition-colors line-clamp-2 cursor-pointer"
-                >
-                  {video.title}
-                </h3>
+                <div className="space-y-1.5">
+                  <h3
+                    onClick={() => handlePlayVideo(video)}
+                    title={video.title}
+                    className="font-bold text-sm text-white hover:text-[#ff6b35] transition-colors line-clamp-2 cursor-pointer"
+                  >
+                    {video.title}
+                  </h3>
+
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Eye className="w-3.5 h-3.5 text-[#ff6b35]" />
+                      <span>{typeof video.views === 'number' ? video.views.toLocaleString() : video.views || 0} views</span>
+                    </span>
+
+                    {video.isCustom && (
+                      <span className="px-1.5 py-0.5 rounded bg-[#ff6b35]/20 text-[#ff6b35] text-[9px] font-bold uppercase tracking-wider">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {/* Actions: Download & Share */}
                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#222]">

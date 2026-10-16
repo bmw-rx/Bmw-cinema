@@ -1,4 +1,13 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface AdultVideoItem {
@@ -7,13 +16,16 @@ export interface AdultVideoItem {
   thumbnail: string;
   downloadUrl: string;
   duration?: string;
-  views?: string;
+  views?: number | string;
   quality?: string;
   previewUrl?: string;
   rawUrl?: string;
+  createdAt?: string;
+  isCustom?: boolean;
 }
 
 const LOCAL_STORAGE_KEY = 'bmw_adult_endpoint';
+const CUSTOM_VIDEOS_CACHE_KEY = 'bmw_custom_adult_videos';
 export const DEFAULT_API_BASE = 'https://apis.davidcyriltech.my.id';
 export const DEFAULT_ADULT_ENDPOINT = '/search/xnxx';
 const API_KEY = 'dc_live_StN6vUfPUWD51DmXqxBu6tj7snF9Ni4O';
@@ -74,6 +86,157 @@ export async function saveAdultEndpoint(endpoint: string): Promise<boolean> {
     localStorage.setItem(LOCAL_STORAGE_KEY, cleanEp);
   }
   return true;
+}
+
+/**
+ * Add a custom adult video (Link + Thumbnail + Title + Views tracking)
+ */
+export async function addCustomAdultVideo(params: {
+  title: string;
+  videoUrl: string;
+  thumbnail: string;
+  duration?: string;
+  quality?: string;
+}): Promise<AdultVideoItem> {
+  const videoId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const item: AdultVideoItem = {
+    id: videoId,
+    title: params.title.trim() || 'Untitled Video',
+    downloadUrl: params.videoUrl.trim(),
+    thumbnail: params.thumbnail.trim(),
+    duration: params.duration?.trim() || '10:00',
+    quality: params.quality?.trim() || '1080p Full HD',
+    views: 0,
+    createdAt: new Date().toISOString(),
+    isCustom: true,
+  };
+
+  try {
+    const docRef = doc(db, 'adult_videos', videoId);
+    await setDoc(docRef, item);
+  } catch (err) {
+    console.error('Failed to save custom video to Firestore:', err);
+  }
+
+  // Update local cache
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CUSTOM_VIDEOS_CACHE_KEY) || '[]');
+      cached.unshift(item);
+      localStorage.setItem(CUSTOM_VIDEOS_CACHE_KEY, JSON.stringify(cached));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return item;
+}
+
+/**
+ * Fetch all custom adult videos added by Admin
+ */
+export async function getCustomAdultVideos(): Promise<AdultVideoItem[]> {
+  try {
+    const colRef = collection(db, 'adult_videos');
+    const snap = await getDocs(colRef);
+    const list: AdultVideoItem[] = [];
+
+    snap.forEach((d) => {
+      const data = d.data();
+      list.push({
+        id: d.id,
+        title: data.title || 'Untitled Video',
+        downloadUrl: data.downloadUrl || '',
+        thumbnail: data.thumbnail || '',
+        duration: data.duration || '10:00',
+        views: typeof data.views === 'number' ? data.views : Number(data.views) || 0,
+        quality: data.quality || '1080p Full HD',
+        createdAt: data.createdAt || '',
+        isCustom: true,
+      });
+    });
+
+    // Sort newest first
+    list.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(CUSTOM_VIDEOS_CACHE_KEY, JSON.stringify(list));
+    }
+    return list;
+  } catch (err) {
+    console.warn('Firestore fetch failed, checking local cache:', err);
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CUSTOM_VIDEOS_CACHE_KEY) || '[]');
+        return cached;
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
+/**
+ * Delete a custom adult video
+ */
+export async function deleteCustomAdultVideo(videoId: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'adult_videos', videoId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.error('Failed to delete custom video from Firestore:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CUSTOM_VIDEOS_CACHE_KEY) || '[]');
+      const filtered = cached.filter((v: AdultVideoItem) => v.id !== videoId);
+      localStorage.setItem(CUSTOM_VIDEOS_CACHE_KEY, JSON.stringify(filtered));
+    } catch (e) {
+      // ignore
+    }
+  }
+  return true;
+}
+
+/**
+ * Increment video views in Firestore and return the updated count
+ */
+export async function incrementAdultVideoViews(videoId: string): Promise<number | null> {
+  if (!videoId) return null;
+
+  try {
+    const docRef = doc(db, 'adult_videos', videoId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      await updateDoc(docRef, { views: increment(1) });
+      const current = snap.data().views;
+      const newCount = (typeof current === 'number' ? current : 0) + 1;
+
+      // Update cache
+      if (typeof window !== 'undefined') {
+        try {
+          const cached: AdultVideoItem[] = JSON.parse(localStorage.getItem(CUSTOM_VIDEOS_CACHE_KEY) || '[]');
+          const item = cached.find((v) => v.id === videoId);
+          if (item) {
+            item.views = newCount;
+            localStorage.setItem(CUSTOM_VIDEOS_CACHE_KEY, JSON.stringify(cached));
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      return newCount;
+    }
+  } catch (err) {
+    console.error('Failed to increment views in Firestore:', err);
+  }
+  return null;
 }
 
 /**
@@ -175,14 +338,23 @@ export async function resolveVideoDetails(videoUrl: string): Promise<{
 }
 
 /**
- * Fetch video items from the configured endpoint
+ * Fetch video items: Combines Admin-added custom videos + Endpoint videos
  */
 export async function fetchAdultVideos(
   searchQuery?: string
 ): Promise<{ success: boolean; videos: AdultVideoItem[]; error?: string }> {
+  // 1. Fetch Admin's custom uploaded videos
+  const customVideos = await getCustomAdultVideos();
+  let filteredCustom = customVideos;
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.toLowerCase().trim();
+    filteredCustom = customVideos.filter((v) => v.title.toLowerCase().includes(q));
+  }
+
+  // 2. Fetch from configured API endpoint if any
   let endpoint = await getAdultEndpoint();
   if (!endpoint) {
-    return { success: true, videos: [] };
+    return { success: true, videos: filteredCustom };
   }
 
   const targetUrl = buildEndpointUrl(endpoint, searchQuery);
@@ -210,7 +382,7 @@ export async function fetchAdultVideos(
     const trimmed = rawText.trim();
 
     if (!trimmed) {
-      return { success: false, videos: [], error: 'Endpoint returned an empty response.' };
+      return { success: true, videos: filteredCustom };
     }
 
     // Explicitly detect HTML response to prevent: "Unexpected token '<', "<!DOCTYPE "... is not valid JSON"
@@ -219,6 +391,9 @@ export async function fetchAdultVideos(
       trimmed.toLowerCase().startsWith('<!doctype') ||
       trimmed.toLowerCase().startsWith('<html')
     ) {
+      if (filteredCustom.length > 0) {
+        return { success: true, videos: filteredCustom };
+      }
       const match = trimmed.match(/<title[^>]*>([^<]+)<\/title>/i);
       const docTitle = match ? match[1].trim() : 'Webpage';
       return {
@@ -232,6 +407,9 @@ export async function fetchAdultVideos(
     try {
       data = JSON.parse(trimmed);
     } catch (parseErr: any) {
+      if (filteredCustom.length > 0) {
+        return { success: true, videos: filteredCustom };
+      }
       return {
         success: false,
         videos: [],
@@ -241,6 +419,9 @@ export async function fetchAdultVideos(
 
     // Check if the API returned an explicit failure message
     if (data.status === false || data.success === false) {
+      if (filteredCustom.length > 0) {
+        return { success: true, videos: filteredCustom };
+      }
       return {
         success: false,
         videos: [],
@@ -266,11 +447,7 @@ export async function fetchAdultVideos(
       rawList = [data];
     }
 
-    if (rawList.length === 0) {
-      return { success: true, videos: [] };
-    }
-
-    const initialVideos: AdultVideoItem[] = rawList.map((item: any, idx: number) => {
+    const endpointVideos: AdultVideoItem[] = rawList.map((item: any, idx: number) => {
       const title = item.title || item.name || item.video_title || `Video #${idx + 1}`;
       const thumbnail =
         item.thumbnail ||
@@ -300,7 +477,7 @@ export async function fetchAdultVideos(
       const rawUrl = item.url || item.link || item.page || '';
 
       return {
-        id: String(item.id || item._id || item.video_id || `v-${idx + 1}`),
+        id: String(item.id || item._id || item.video_id || `ep-${idx + 1}`),
         title: String(title),
         thumbnail: String(thumbnail),
         downloadUrl: String(downloadUrl),
@@ -309,14 +486,15 @@ export async function fetchAdultVideos(
         quality: item.quality || 'HD',
         previewUrl: item.preview || item.preview_url || downloadUrl,
         rawUrl: rawUrl,
+        isCustom: false,
       };
     });
 
     // If search results returned items with page URLs (like /search/xnxx) without thumbnails or direct download links,
     // pre-fetch details for the top batch to provide real thumbnails and stream links
-    const needsResolution = initialVideos.some((v) => !v.thumbnail && v.rawUrl);
+    const needsResolution = endpointVideos.some((v) => !v.thumbnail && v.rawUrl);
     if (needsResolution && (targetUrl.includes('xnxx') || targetUrl.includes('search'))) {
-      const batchToResolve = initialVideos.slice(0, 8);
+      const batchToResolve = endpointVideos.slice(0, 8);
       await Promise.allSettled(
         batchToResolve.map(async (v) => {
           if (!v.thumbnail && v.rawUrl) {
@@ -332,9 +510,14 @@ export async function fetchAdultVideos(
       );
     }
 
-    return { success: true, videos: initialVideos };
+    // Merge: Custom Admin videos at the top, followed by endpoint videos
+    const allCombined = [...filteredCustom, ...endpointVideos];
+    return { success: true, videos: allCombined };
   } catch (err: any) {
     console.error('Failed to fetch videos from endpoint:', err);
+    if (filteredCustom.length > 0) {
+      return { success: true, videos: filteredCustom };
+    }
     return {
       success: false,
       videos: [],

@@ -26,6 +26,14 @@ import {
   Check,
   Volume2,
   Film,
+  Eye,
+  Plus,
+  Play,
+  X,
+  Video,
+  Copy,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import { UserProfileData } from '../services/auth';
 import {
@@ -44,6 +52,10 @@ import {
   getAdultEndpoint,
   saveAdultEndpoint,
   fetchAdultVideos,
+  AdultVideoItem,
+  addCustomAdultVideo,
+  getCustomAdultVideos,
+  deleteCustomAdultVideo,
 } from '../services/adultService';
 
 interface AdminPanelProps {
@@ -66,6 +78,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
   const [endpointStatus, setEndpointStatus] = useState<string | null>(null);
   const [testingEndpoint, setTestingEndpoint] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+
+  // Custom Adult Videos & Views state
+  const [customAdultVideos, setCustomAdultVideos] = useState<AdultVideoItem[]>([]);
+  const [loadingCustomVideos, setLoadingCustomVideos] = useState(false);
+  const [addingVideo, setAddingVideo] = useState(false);
+  const [addStatus, setAddStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newVideoUrl, setNewVideoUrl] = useState('');
+  const [newThumbnail, setNewThumbnail] = useState('');
+  const [newDuration, setNewDuration] = useState('10:00');
+  const [newQuality, setNewQuality] = useState('1080p Full HD');
+  const [previewVideo, setPreviewVideo] = useState<AdultVideoItem | null>(null);
+  const [copiedVideoId, setCopiedVideoId] = useState<string | null>(null);
 
   // Users data
   const [users, setUsers] = useState<UserProfileData[]>([]);
@@ -106,14 +131,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
     setIsAuthenticated(false);
   };
 
-  // Load registered users, notification history, and adult endpoint once unlocked
+  // Load registered users, notification history, custom adult videos, and adult endpoint once unlocked
   useEffect(() => {
     if (isAuthenticated) {
       loadUsers();
       loadNotificationLogs();
       loadEndpoint();
+      loadCustomAdultVideos();
     }
   }, [isAuthenticated]);
+
+  const loadCustomAdultVideos = async () => {
+    setLoadingCustomVideos(true);
+    const list = await getCustomAdultVideos();
+    setCustomAdultVideos(list);
+    setLoadingCustomVideos(false);
+  };
+
+  const handleAddCustomVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVideoUrl.trim() || !newThumbnail.trim()) {
+      setAddStatus({ success: false, message: 'Please provide both the video link and thumbnail link.' });
+      return;
+    }
+    setAddingVideo(true);
+    setAddStatus(null);
+    try {
+      const added = await addCustomAdultVideo({
+        title: newTitle.trim() || 'Exclusive Feature',
+        videoUrl: newVideoUrl.trim(),
+        thumbnail: newThumbnail.trim(),
+        duration: newDuration.trim() || '10:00',
+        quality: newQuality.trim() || '1080p Full HD',
+      });
+      setCustomAdultVideos((prev) => [added, ...prev]);
+      setAddStatus({ success: true, message: 'Video published successfully to Adult Cinema!' });
+      setNewTitle('');
+      setNewVideoUrl('');
+      setNewThumbnail('');
+      setNewDuration('10:00');
+      setTimeout(() => setAddStatus(null), 5000);
+    } catch (err: any) {
+      setAddStatus({ success: false, message: err?.message || 'Failed to add video.' });
+    } finally {
+      setAddingVideo(false);
+    }
+  };
+
+  const handleDeleteCustomVideo = async (videoId: string) => {
+    if (!window.confirm('Are you sure you want to delete this video?')) return;
+    await deleteCustomAdultVideo(videoId);
+    setCustomAdultVideos((prev) => prev.filter((v) => v.id !== videoId));
+  };
+
+  const handleCopyVideoLink = async (videoId: string, url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedVideoId(videoId);
+      setTimeout(() => setCopiedVideoId(null), 2000);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const loadEndpoint = async () => {
     const ep = await getAdultEndpoint();
@@ -460,7 +539,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
         </button>
 
         <button
-          onClick={() => setActiveTab('endpoint')}
+          onClick={() => {
+            setActiveTab('endpoint');
+            loadCustomAdultVideos();
+          }}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
             activeTab === 'endpoint'
               ? 'bg-[#ff6b35] text-black shadow-md shadow-[#ff6b35]/20'
@@ -468,7 +550,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
           }`}
         >
           <Film className="w-4 h-4" />
-          <span>Adult Endpoint</span>
+          <span>Adult Cinema Hub ({customAdultVideos.length})</span>
         </button>
       </div>
 
@@ -1013,104 +1095,550 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
       )}
 
       {/* ======================================================== */}
-      {/* TAB 4: ADULT VIDEO ENDPOINT SETTINGS */}
+      {/* TAB 4: ADULT VIDEO HUB & VIEW ANALYTICS */}
       {/* ======================================================== */}
       {activeTab === 'endpoint' && (
-        <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Film className="w-5 h-5 text-[#ff6b35]" />
-                <span>Adult Video Endpoint Configuration</span>
-              </h2>
-              <p className="text-xs text-gray-400 mt-1">
-                Configure the dynamic endpoint for adult videos. The API automatically returns thumbnails, video links, and download streams.
-              </p>
+        <div className="space-y-6">
+          {/* Header & Quick Stats */}
+          <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Film className="w-5 h-5 text-[#ff6b35]" />
+                  <span>Adult Cinema Hub & View Analytics</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Upload custom videos with direct video links and thumbnails, monitor real-time views, and manage media feeds.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={loadCustomAdultVideos}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-200 text-xs font-semibold border border-zinc-700 transition cursor-pointer"
+                  title="Refresh video list and view counts"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingCustomVideos ? 'animate-spin text-[#ff6b35]' : ''}`} />
+                  <span>Refresh Views</span>
+                </button>
+
+                <a
+                  href="adult.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black text-xs font-bold transition shadow-md shadow-[#ff6b35]/20"
+                >
+                  <span>Open Adult Page</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
 
-            <a
-              href="adult.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-200 hover:text-white text-xs font-semibold border border-zinc-700 transition"
-            >
-              <span>Preview Adult Page</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            {/* Metrics cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-[#1c1c1f] border border-zinc-800/80">
+                <div className="flex items-center justify-between text-gray-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Custom Videos</span>
+                  <Video className="w-4 h-4 text-[#ff6b35]" />
+                </div>
+                <div className="text-2xl font-black text-white">{customAdultVideos.length}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Uploaded via link & thumbnail</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#1c1c1f] border border-zinc-800/80">
+                <div className="flex items-center justify-between text-gray-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Total Video Views</span>
+                  <Eye className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-black text-white">
+                  {customAdultVideos
+                    .reduce((acc, v) => acc + (typeof v.views === 'number' ? v.views : Number(v.views) || 0), 0)
+                    .toLocaleString()}
+                </div>
+                <div className="text-[10px] text-emerald-400/90 mt-0.5">Recorded user views</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#1c1c1f] border border-zinc-800/80">
+                <div className="flex items-center justify-between text-gray-400 mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Stream Endpoint</span>
+                  <Film className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-sm font-bold text-white truncate font-mono">
+                  {adultEndpoint ? adultEndpoint : 'Default (/search/xnxx)'}
+                </div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Automated video feed fallback</div>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSaveEndpoint} className="space-y-4 max-w-2xl">
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                API Endpoint (JSON Path or Full URL)
-              </label>
-              <input
-                type="text"
-                value={adultEndpoint}
-                onChange={(e) => setAdultEndpoint(e.target.value)}
-                placeholder="e.g. /search/xnxx or https://apis.davidcyriltech.my.id/search/xnxx"
-                className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 font-mono transition-colors"
-              />
-              <div className="flex items-center gap-2 flex-wrap mt-2">
-                <span className="text-[11px] text-gray-500">Quick presets:</span>
-                <button
-                  type="button"
-                  onClick={() => setAdultEndpoint('/search/xnxx')}
-                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-[#ff6b35] border border-zinc-700 cursor-pointer transition"
-                >
-                  /search/xnxx
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdultEndpoint('https://apis.davidcyriltech.my.id/search/xnxx')}
-                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-gray-300 border border-zinc-700 cursor-pointer transition"
-                >
-                  https://apis.davidcyriltech.my.id/search/xnxx
-                </button>
+          {/* Form to Add New Adult Video */}
+          <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-[#ff6b35]" />
+                  <span>Upload Video (Video Link + Thumbnail)</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Enter direct stream/download link and thumbnail URL. The video will be published with live views tracking.
+                </p>
               </div>
-              <p className="text-[11px] text-gray-400 mt-2">
-                Please enter a JSON API endpoint. Documentation pages (e.g. /endpoints/search) return HTML and will be rejected.
-              </p>
             </div>
 
-            {endpointStatus && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium flex items-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{endpointStatus}</span>
-              </div>
-            )}
+            <form onSubmit={handleAddCustomVideo} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-8 space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Video Title
+                  </label>
+                  <input
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="e.g. Exclusive HD Feature Movie"
+                    className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500"
+                    required
+                  />
+                </div>
 
-            {testResult && (
-              <div className={`p-3.5 rounded-xl text-xs font-mono flex items-center gap-2 animate-fade-in ${
-                testResult.startsWith('Success')
-                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                  : 'bg-red-500/10 border border-red-500/30 text-red-300'
-              }`}>
-                <span>{testResult}</span>
-              </div>
-            )}
+                {/* Video Link */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Video Stream / Download Link (MP4 or Direct URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={newVideoUrl}
+                    onChange={(e) => setNewVideoUrl(e.target.value)}
+                    placeholder="https://example.com/videos/exclusive_clip.mp4"
+                    className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 font-mono"
+                    required
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Direct video URL (.mp4, .mkv, stream link). Users can stream and direct-download this file.
+                  </p>
+                </div>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={savingEndpoint}
-                className="px-6 py-3 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-[#ff6b35]/20 cursor-pointer flex items-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                <span>{savingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
-              </button>
+                {/* Thumbnail Link */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Video Thumbnail Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={newThumbnail}
+                    onChange={(e) => setNewThumbnail(e.target.value)}
+                    placeholder="https://example.com/images/poster.jpg"
+                    className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 font-mono"
+                    required
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Image preview URL (.jpg, .png, .webp).
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Duration */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Duration
+                    </label>
+                    <input
+                      type="text"
+                      value={newDuration}
+                      onChange={(e) => setNewDuration(e.target.value)}
+                      placeholder="e.g. 12:45"
+                      className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 font-mono"
+                    />
+                  </div>
+
+                  {/* Quality */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Quality Tag
+                    </label>
+                    <select
+                      value={newQuality}
+                      onChange={(e) => setNewQuality(e.target.value)}
+                      className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white"
+                    >
+                      <option value="1080p Full HD">1080p Full HD</option>
+                      <option value="4K Ultra HD">4K Ultra HD</option>
+                      <option value="720p HD">720p HD</option>
+                      <option value="480p SD">480p SD</option>
+                    </select>
+                  </div>
+                </div>
+
+                {addStatus && (
+                  <div
+                    className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 animate-fade-in ${
+                      addStatus.success
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                        : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                    }`}
+                  >
+                    {addStatus.success ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{addStatus.message}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={addingVideo}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] hover:from-[#e55a2b] hover:to-[#ff6b35] text-black font-extrabold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#ff6b35]/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{addingVideo ? 'Publishing Video...' : 'Publish Video to Adult Cinema'}</span>
+                </button>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="lg:col-span-4">
+                <div className="border border-zinc-800 bg-[#0d0d0d] rounded-2xl p-4 space-y-3">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#ff6b35]" />
+                    <span>Live Preview Card</span>
+                  </span>
+
+                  <div className="rounded-xl overflow-hidden border border-zinc-800 bg-[#141414]">
+                    <div className="relative aspect-video w-full bg-[#1c1c1f] overflow-hidden flex items-center justify-center">
+                      {newThumbnail ? (
+                        <img
+                          src={newThumbnail}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Film className="w-8 h-8 text-zinc-700" />
+                      )}
+
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-[#ff6b35] text-black flex items-center justify-center shadow-lg">
+                          <Play className="w-4 h-4 fill-black ml-0.5" />
+                        </div>
+                      </div>
+
+                      <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[9px] font-medium text-white flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#ff6b35]" />
+                        {newDuration || '10:00'}
+                      </span>
+
+                      <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-[#ff6b35] text-[9px] font-extrabold text-black uppercase tracking-wider">
+                        {newQuality || '1080p Full HD'}
+                      </span>
+                    </div>
+
+                    <div className="p-3 space-y-2">
+                      <div className="font-bold text-xs text-white truncate">
+                        {newTitle || 'Video Title Preview'}
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3 text-[#ff6b35]" />
+                          <span>0 views (New)</span>
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#ff6b35]/20 text-[#ff6b35] font-bold uppercase text-[8px]">
+                          Featured
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Section: Published Videos & View Analytics */}
+          <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-emerald-400" />
+                  <span>Published Videos & Views Tracker ({customAdultVideos.length})</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Real-time view count recorded each time a visitor plays the video on BMW CINEMA.
+                </p>
+              </div>
 
               <button
                 type="button"
-                onClick={handleTestEndpoint}
-                disabled={testingEndpoint || !adultEndpoint.trim()}
-                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-gray-200 hover:text-white font-semibold text-xs border border-zinc-700 transition cursor-pointer flex items-center gap-2"
+                onClick={loadCustomAdultVideos}
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 cursor-pointer"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${testingEndpoint ? 'animate-spin text-[#ff6b35]' : ''}`} />
-                <span>{testingEndpoint ? 'Testing Connection...' : 'Test Endpoint'}</span>
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reload</span>
               </button>
             </div>
-          </form>
+
+            {loadingCustomVideos ? (
+              <div className="py-12 text-center text-gray-500 text-xs">
+                Loading videos and analytics...
+              </div>
+            ) : customAdultVideos.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 text-xs space-y-2">
+                <Film className="w-8 h-8 text-zinc-700 mx-auto" />
+                <div>No custom adult videos uploaded yet.</div>
+                <div className="text-[11px] text-gray-600">
+                  Use the form above to add a video using its direct link and thumbnail.
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {customAdultVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="bg-[#18181b] border border-zinc-800 rounded-xl overflow-hidden flex flex-col justify-between hover:border-zinc-700 transition"
+                  >
+                    <div className="relative aspect-video bg-black overflow-hidden group">
+                      {video.thumbnail ? (
+                        <img
+                          src={video.thumbnail}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
+                          <Film className="w-8 h-8" />
+                        </div>
+                      )}
+
+                      <div
+                        onClick={() => setPreviewVideo(video)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-[#ff6b35] text-black flex items-center justify-center">
+                          <Play className="w-4 h-4 fill-black ml-0.5" />
+                        </div>
+                      </div>
+
+                      <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-white font-mono">
+                        {video.duration || '10:00'}
+                      </span>
+
+                      <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-[#ff6b35] text-[9px] font-extrabold text-black uppercase">
+                        {video.quality || '1080p'}
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-3 flex-grow flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-bold text-xs text-white line-clamp-2" title={video.title}>
+                          {video.title}
+                        </h4>
+
+                        {/* Views display badge */}
+                        <div className="mt-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold">
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>
+                              {typeof video.views === 'number'
+                                ? video.views.toLocaleString()
+                                : video.views || 0}{' '}
+                              Views
+                            </span>
+                          </div>
+
+                          <span className="text-[10px] text-gray-500 font-mono">
+                            {video.createdAt ? new Date(video.createdAt).toLocaleDateString() : 'Active'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-zinc-800">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewVideo(video)}
+                          className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-[#ff6b35] hover:text-black text-gray-200 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                        >
+                          <Play className="w-3 h-3" />
+                          <span>Test Stream</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyVideoLink(video.id, video.downloadUrl)}
+                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white transition cursor-pointer"
+                          title="Copy direct video link"
+                        >
+                          {copiedVideoId === video.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomVideo(video.id)}
+                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition cursor-pointer"
+                          title="Delete video"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Dynamic Stream API Endpoint Configuration */}
+          <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-4">
+            <div className="border-b border-zinc-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Film className="w-4 h-4 text-[#ff6b35]" />
+                <span>Dynamic Stream API Endpoint (Optional Feed)</span>
+              </h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Optional: Configure an external API endpoint to automatically populate additional videos alongside your custom videos.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEndpoint} className="space-y-4 max-w-2xl">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                  API Endpoint (JSON Path or Full URL)
+                </label>
+                <input
+                  type="text"
+                  value={adultEndpoint}
+                  onChange={(e) => setAdultEndpoint(e.target.value)}
+                  placeholder="e.g. /search/xnxx or https://apis.davidcyriltech.my.id/search/xnxx"
+                  className="w-full bg-[#1c1c1f] border border-zinc-700 focus:border-[#ff6b35] focus:outline-none rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 font-mono transition-colors"
+                />
+                <div className="flex items-center gap-2 flex-wrap mt-2">
+                  <span className="text-[11px] text-gray-500">Quick presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => setAdultEndpoint('/search/xnxx')}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-[#ff6b35] border border-zinc-700 cursor-pointer transition"
+                  >
+                    /search/xnxx
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdultEndpoint('https://apis.davidcyriltech.my.id/search/xnxx')}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-gray-300 border border-zinc-700 cursor-pointer transition"
+                  >
+                    https://apis.davidcyriltech.my.id/search/xnxx
+                  </button>
+                </div>
+              </div>
+
+              {endpointStatus && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium flex items-center gap-2 animate-fade-in">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{endpointStatus}</span>
+                </div>
+              )}
+
+              {testResult && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-mono flex items-center gap-2 animate-fade-in ${
+                    testResult.startsWith('Success')
+                      ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                      : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                  }`}
+                >
+                  <span>{testResult}</span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={savingEndpoint}
+                  className="px-5 py-2.5 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-[#ff6b35]/20 cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{savingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestEndpoint}
+                  disabled={testingEndpoint || !adultEndpoint.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-gray-200 hover:text-white font-semibold text-xs border border-zinc-700 transition cursor-pointer flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingEndpoint ? 'animate-spin text-[#ff6b35]' : ''}`} />
+                  <span>{testingEndpoint ? 'Testing Connection...' : 'Test Endpoint'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Test Player Modal for Admin */}
+          {previewVideo && (
+            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-[#141414] border border-[#262626] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl space-y-4">
+                <div className="flex items-center justify-between p-4 border-b border-[#242424]">
+                  <div className="flex items-center gap-2">
+                    <Film className="w-4 h-4 text-[#ff6b35]" />
+                    <h3 className="text-sm font-bold text-white truncate max-w-md">
+                      {previewVideo.title}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setPreviewVideo(null)}
+                    className="p-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-400 hover:text-white transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="px-4">
+                  <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+                    <video
+                      src={previewVideo.downloadUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-[#111] border-t border-[#222]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>
+                        {typeof previewVideo.views === 'number'
+                          ? previewVideo.views.toLocaleString()
+                          : previewVideo.views || 0}{' '}
+                        Views Recorded
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400 font-mono">
+                      {previewVideo.quality || '1080p Full HD'}
+                    </span>
+                  </div>
+
+                  <a
+                    href={previewVideo.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black text-xs font-bold transition cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Direct File</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
