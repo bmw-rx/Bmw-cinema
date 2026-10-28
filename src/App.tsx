@@ -13,6 +13,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { WhatsAppBotView } from './components/WhatsAppBotView';
 import { AdultView } from './components/AdultView';
 import { SocialDownloaderView } from './components/SocialDownloaderView';
+import { TikTokFollowAd } from './components/TikTokFollowAd';
 import { Footer } from './components/Footer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PushNotificationToast } from './components/PushNotificationToast';
@@ -351,6 +352,9 @@ export default function App() {
         onClose={() => setActivePushToast(null)}
         onNavigate={(p) => navigateTo(p as any)}
       />
+
+      {/* Non-intrusive 10-second TikTok Follow Ad */}
+      <TikTokFollowAd />
 
       {/* PWA Offline indicator */}
       <OfflineIndicator />

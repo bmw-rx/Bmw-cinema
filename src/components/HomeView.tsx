@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Sparkles, Trophy, Layers, Play, AlertCircle, Download } from 'lucide-react';
+import { Flame, Sparkles, Trophy, Layers, Play, AlertCircle } from 'lucide-react';
 import { Movie, Genre } from '../types/movie';
 import {
   getTrendingMovies,
@@ -11,7 +11,6 @@ import {
 import { HeroBanner } from './HeroBanner';
 import { MovieRow } from './MovieRow';
 import { MovieGrid } from './MovieGrid';
-import { PWAInstallButton } from './PWAInstallButton';
 
 interface HomeViewProps {
   onSelectMovie: (movie: Movie) => void;
@@ -149,53 +148,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         onWatch={onWatchMovie}
         onDownload={onDownloadMovie}
       />
-
-      {/* PWA Install App Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-8 mb-6 relative z-20">
-        <PWAInstallButton variant="banner" />
-      </div>
-
-      {/* Featured Social Media Downloader Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 relative z-20">
-        <div
-          onClick={() => {
-            if (onNavigateToDownloader) onNavigateToDownloader();
-            else if (onNavigateToChannel) onNavigateToChannel();
-          }}
-          className="bg-gradient-to-r from-[#181818] via-[#201511] to-[#141414] border-2 border-[#ff6b35]/50 hover:border-[#ff6b35] p-3.5 sm:p-5 rounded-2xl flex items-center justify-between gap-4 cursor-pointer group shadow-2xl transition-all hover:scale-[1.01]"
-        >
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-[#ff6b35] to-[#ff8c42] text-black flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-lg shadow-[#ff6b35]/25">
-              <Download className="w-6 h-6 sm:w-8 sm:h-8" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#ff6b35] text-black rounded-full flex items-center gap-1 shadow-sm">
-                  FREE TOOL
-                </span>
-                <span className="text-xs text-gray-400 font-medium hidden sm:inline">TikTok &bull; Instagram &bull; Facebook &bull; YouTube</span>
-              </div>
-              <h3 className="text-base sm:text-xl font-black text-white group-hover:text-[#ff6b35] transition-colors truncate">
-                Social Media Video Downloader
-              </h3>
-              <p className="text-xs text-gray-400 hidden sm:block">
-                Download HD videos, reels, photos & audio without watermarks.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onNavigateToDownloader) onNavigateToDownloader();
-              else if (onNavigateToChannel) onNavigateToChannel();
-            }}
-            className="px-4 py-2.5 sm:px-6 sm:py-3 bg-[#ff6b35] hover:bg-[#ff8354] text-black font-black text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-lg shadow-[#ff6b35]/25 group-hover:scale-105 transition-all shrink-0 cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            <span>Open Downloader</span>
-          </button>
-        </div>
-      </div>
 
       <div className="space-y-4 relative z-20">
         {/* 2. Trending Now Section */}
