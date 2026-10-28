@@ -157,9 +157,14 @@ export default function App() {
       const adultVideoParam = params.get('v') || params.get('video');
       if (
         path.includes('adult') ||
+        path.includes('apps') ||
+        path.includes('premium') ||
         hash === '#adult' ||
-        hash.startsWith('#adult') ||
+        hash === '#apps' ||
+        hash === '#apppremium' ||
         params.get('page') === 'adult' ||
+        params.get('page') === 'apps' ||
+        params.get('page') === 'apppremium' ||
         Boolean(adultVideoParam)
       ) {
         setCurrentPage('adult');
@@ -173,6 +178,7 @@ export default function App() {
       else if (bmwPage === 'movies') setCurrentPage('movies');
       else if (bmwPage === 'tvshows') setCurrentPage('tvshows');
       else if (bmwPage === 'search') setCurrentPage('search');
+      else if (bmwPage === 'adult' || bmwPage === 'apps') setCurrentPage('adult');
       else if (bmwPage === 'auth') setCurrentPage('auth');
       else if (bmwPage === 'whatsappbot') setCurrentPage('whatsappbot');
       else if (bmwPage === 'adult') setCurrentPage('adult');

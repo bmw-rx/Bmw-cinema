@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, MessageSquare, Download } from 'lucide-react';
+import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, MessageSquare, Download, Smartphone } from 'lucide-react';
 import { getFavorites } from '../services/storage';
 import { subscribeToAuth } from '../services/auth';
 import { User } from 'firebase/auth';
@@ -56,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     { id: 'downloader', label: 'Downloader', icon: Download, href: 'downloader.html' },
     { id: 'movies', label: 'Movies', icon: Film, href: 'movies.html' },
     { id: 'tvshows', label: 'TV Shows', icon: Film, href: 'tvshows.html' },
-    { id: 'adult', label: 'Adult', icon: Film, href: 'adult.html' },
+    { id: 'adult', label: 'App Premium', icon: Smartphone, href: 'adult.html' },
     { id: 'whatsappbot', label: 'WhatsApp Bot', icon: MessageSquare, href: 'whatsapp-bot.html' },
     { id: 'search', label: 'Search', icon: Search, href: 'search.html' },
     { id: 'favorites', label: 'My List', icon: Heart, count: favCount, href: '#favorites' },

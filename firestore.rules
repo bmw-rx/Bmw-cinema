@@ -55,5 +55,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Premium Apps collection & download tracking
+    match /premium_apps/{appId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

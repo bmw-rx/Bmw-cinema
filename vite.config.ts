@@ -199,6 +199,7 @@ export default defineConfig(() => {
           whatsappbot: path.resolve(__dirname, 'whatsapp-bot.html'),
           whatsappbotDirect: path.resolve(__dirname, 'whatsappbot.html'),
           adult: path.resolve(__dirname, 'adult.html'),
+          apps: path.resolve(__dirname, 'apps.html'),
         },
       },
     },

@@ -71,7 +71,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               onClick={() => onNavigate && onNavigate('adult' as any)}
               className="text-gray-400 hover:text-[#ff6b35] transition-colors"
             >
-              Adult
+              App Premium
             </button>
             <button
               onClick={() => onNavigate && onNavigate('auth')}
