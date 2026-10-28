@@ -12,6 +12,7 @@ import { AuthView } from './components/AuthView';
 import { AdminPanel } from './components/AdminPanel';
 import { WhatsAppBotView } from './components/WhatsAppBotView';
 import { AdultView } from './components/AdultView';
+import { SocialDownloaderView } from './components/SocialDownloaderView';
 import { Footer } from './components/Footer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PushNotificationToast } from './components/PushNotificationToast';
@@ -23,7 +24,7 @@ import {
 import { subscribeToAuth } from './services/auth';
 import { User } from 'firebase/auth';
 
-export type PageRoute = 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
+export type PageRoute = 'home' | 'movies' | 'tvshows' | 'downloader' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
@@ -101,8 +102,18 @@ export default function App() {
         return;
       }
 
-      if (path.includes('football.html') || hash === '#football' || params.get('page') === 'football') {
-        setCurrentPage('football');
+      if (
+        path.includes('downloader') ||
+        path.includes('channel') ||
+        path.includes('football') ||
+        hash === '#downloader' ||
+        hash === '#channel' ||
+        hash === '#football' ||
+        params.get('page') === 'downloader' ||
+        params.get('page') === 'channel' ||
+        params.get('page') === 'football'
+      ) {
+        setCurrentPage('downloader');
         return;
       }
 
@@ -157,7 +168,7 @@ export default function App() {
       // Check if global page marker was set in standalone HTML file
       const bmwPage = (window as any).BMW_PAGE;
       if (bmwPage === 'admin') setCurrentPage('admin');
-      else if (bmwPage === 'football') setCurrentPage('football');
+      else if (bmwPage === 'downloader' || bmwPage === 'channel' || bmwPage === 'football') setCurrentPage('downloader');
       else if (bmwPage === 'movies') setCurrentPage('movies');
       else if (bmwPage === 'tvshows') setCurrentPage('tvshows');
       else if (bmwPage === 'search') setCurrentPage('search');
@@ -254,7 +265,7 @@ export default function App() {
             onWatchMovie={handleWatchMovie}
             onDownloadMovie={handleDownloadMovie}
             onNavigateToMovies={handleNavigateToMovies}
-            onNavigateToChannel={() => navigateTo('football')}
+            onNavigateToDownloader={() => navigateTo('downloader')}
           />
         )}
 
@@ -273,8 +284,8 @@ export default function App() {
           />
         )}
 
-        {currentPage === 'football' && (
-          <FootballView />
+        {(currentPage === 'downloader' || currentPage === 'football') && (
+          <SocialDownloaderView />
         )}
 
         {currentPage === 'search' && (

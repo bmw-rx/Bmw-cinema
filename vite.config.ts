@@ -45,6 +45,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
             {
@@ -96,6 +97,82 @@ export default defineConfig(() => {
           type: 'module',
         },
       }),
+      {
+        name: 'social-downloader-proxy',
+        configureServer(server) {
+          server.middlewares.use('/api/downloader', async (req, res) => {
+            try {
+              const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+              const targetUrl = urlObj.searchParams.get('url');
+              if (!targetUrl) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: 'URL parameter is required' }));
+                return;
+              }
+
+              // 1. Try primary requested API
+              const primaryApi = `https://api.ikyyxd.my.id/download/all-in-one?url=${encodeURIComponent(targetUrl)}`;
+              try {
+                const apiRes = await fetch(primaryApi, {
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    Accept: 'application/json, text/plain, */*',
+                  },
+                });
+                const text = await apiRes.text();
+                if (text && !text.trim().startsWith('<')) {
+                  const data = JSON.parse(text);
+                  if (data.status !== false && !data.error?.includes('Blocked')) {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(text);
+                    return;
+                  }
+                }
+              } catch (e) {
+                // fall through
+              }
+
+              // 2. Special handler for TikTok if primary blocked
+              if (targetUrl.includes('tiktok.com') || targetUrl.includes('douyin')) {
+                try {
+                  const tikRes = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(targetUrl)}`);
+                  const tikText = await tikRes.text();
+                  if (tikText && !tikText.trim().startsWith('<')) {
+                    const tikData = JSON.parse(tikText);
+                    if (tikData.code === 0 && tikData.data) {
+                      res.statusCode = 200;
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(tikText);
+                      return;
+                    }
+                  }
+                } catch (e) {
+                  // fall through
+                }
+              }
+
+              // 3. Try secondary fallback
+              const fallbackApi = `https://apis.davidcyriltech.my.id/download/aio?url=${encodeURIComponent(targetUrl)}`;
+              const fbRes = await fetch(fallbackApi, {
+                headers: {
+                  'X-API-Key': 'dc_live_StN6vUfPUWD51DmXqxBu6tj7snF9Ni4O',
+                  Accept: 'application/json, text/plain, */*',
+                },
+              });
+              const fbText = await fbRes.text();
+              res.statusCode = fbRes.status;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(fbText);
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: err?.message || 'Proxy error' }));
+            }
+          });
+        },
+      },
     ],
     resolve: {
       alias: {
@@ -115,6 +192,8 @@ export default defineConfig(() => {
           tvshows: path.resolve(__dirname, 'tvshows.html'),
           search: path.resolve(__dirname, 'search.html'),
           football: path.resolve(__dirname, 'football.html'),
+          downloader: path.resolve(__dirname, 'downloader.html'),
+          channel: path.resolve(__dirname, 'channel.html'),
           auth: path.resolve(__dirname, 'auth.html'),
           admin: path.resolve(__dirname, 'admin.html'),
           whatsappbot: path.resolve(__dirname, 'whatsapp-bot.html'),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, MessageSquare } from 'lucide-react';
+import { Film, Search, Heart, Tv, Home, Menu, X, Play, Activity, User as UserIcon, MessageSquare, Download } from 'lucide-react';
 import { getFavorites } from '../services/storage';
 import { subscribeToAuth } from '../services/auth';
 import { User } from 'firebase/auth';
@@ -7,8 +7,8 @@ import { PWAInstallButton } from './PWAInstallButton';
 import { NotificationCenter } from './NotificationCenter';
 
 interface NavbarProps {
-  activePage: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
-  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'football' | 'search' | 'favorites' | 'auth' | 'admin' | 'whatsappbot' | 'adult') => void;
+  activePage: 'home' | 'movies' | 'tvshows' | 'downloader' | 'football' | 'search' | 'favorites' | 'movie' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
+  onNavigate: (page: 'home' | 'movies' | 'tvshows' | 'downloader' | 'football' | 'search' | 'favorites' | 'auth' | 'admin' | 'whatsappbot' | 'adult') => void;
   onOpenSearch?: () => void;
 }
 
@@ -42,16 +42,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
     return () => window.removeEventListener('bmw_favorites_updated', updateCount);
   }, []);
 
-  const navLinks = [
-    { id: 'home' as const, label: 'Home', icon: Home, href: 'index.html' },
-    { id: 'football' as const, label: 'Live TV (Channel 1)', icon: Tv, href: 'football.html', isLive: true },
-    { id: 'movies' as const, label: 'Movies', icon: Film, href: 'movies.html' },
-    { id: 'tvshows' as const, label: 'TV Shows', icon: Film, href: 'tvshows.html' },
-    { id: 'adult' as const, label: 'Adult', icon: Film, href: 'adult.html' },
-    { id: 'whatsappbot' as const, label: 'WhatsApp Bot', icon: MessageSquare, href: 'whatsapp-bot.html' },
-    { id: 'search' as const, label: 'Search', icon: Search, href: 'search.html' },
-    { id: 'favorites' as const, label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
-    { id: 'auth' as const, label: currentUser ? 'Account' : 'Sign In', icon: UserIcon, href: 'auth.html' },
+  interface NavLinkItem {
+    id: 'home' | 'movies' | 'tvshows' | 'downloader' | 'football' | 'search' | 'favorites' | 'auth' | 'admin' | 'whatsappbot' | 'adult';
+    label: string;
+    icon: any;
+    href: string;
+    count?: number;
+    isLive?: boolean;
+  }
+
+  const navLinks: NavLinkItem[] = [
+    { id: 'home', label: 'Home', icon: Home, href: 'index.html' },
+    { id: 'downloader', label: 'Downloader', icon: Download, href: 'downloader.html' },
+    { id: 'movies', label: 'Movies', icon: Film, href: 'movies.html' },
+    { id: 'tvshows', label: 'TV Shows', icon: Film, href: 'tvshows.html' },
+    { id: 'adult', label: 'Adult', icon: Film, href: 'adult.html' },
+    { id: 'whatsappbot', label: 'WhatsApp Bot', icon: MessageSquare, href: 'whatsapp-bot.html' },
+    { id: 'search', label: 'Search', icon: Search, href: 'search.html' },
+    { id: 'favorites', label: 'My List', icon: Heart, count: favCount, href: '#favorites' },
+    { id: 'auth', label: currentUser ? 'Account' : 'Sign In', icon: UserIcon, href: 'auth.html' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent, id: any) => {

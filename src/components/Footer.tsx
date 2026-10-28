@@ -44,10 +44,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               TV Shows
             </button>
             <button
-              onClick={() => onNavigate && onNavigate('football')}
+              onClick={() => onNavigate && onNavigate('downloader' as any)}
               className="text-gray-400 hover:text-[#ff6b35] transition-colors"
             >
-              Live Football
+              Downloader
             </button>
             <button
               onClick={() => onNavigate && onNavigate('search')}
