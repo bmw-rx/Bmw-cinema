@@ -171,6 +171,60 @@ export default defineConfig(() => {
               res.end(JSON.stringify({ success: false, error: err?.message || 'Proxy error' }));
             }
           });
+
+          // 4. Force-download attachment stream proxy
+          server.middlewares.use('/api/download-file', async (req, res) => {
+            try {
+              const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+              const targetUrl = urlObj.searchParams.get('url');
+              let filename = urlObj.searchParams.get('filename') || 'video.mp4';
+              filename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+              if (!filename.includes('.')) {
+                filename += '.mp4';
+              }
+
+              if (!targetUrl) {
+                res.statusCode = 400;
+                res.end('Missing url parameter');
+                return;
+              }
+
+              const remoteRes = await fetch(targetUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Accept': '*/*',
+                },
+              });
+
+              if (!remoteRes.ok || !remoteRes.body) {
+                res.statusCode = 302;
+                res.setHeader('Location', targetUrl);
+                res.end();
+                return;
+              }
+
+              const contentType = remoteRes.headers.get('content-type') || 'application/octet-stream';
+              const contentLength = remoteRes.headers.get('content-length');
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', contentType);
+              res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              if (contentLength) {
+                res.setHeader('Content-Length', contentLength);
+              }
+
+              const { Readable } = await import('stream');
+              const stream = Readable.fromWeb(remoteRes.body as any);
+              stream.pipe(res);
+              stream.on('error', () => {
+                res.end();
+              });
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.end('Download proxy error');
+            }
+          });
         },
       },
     ],

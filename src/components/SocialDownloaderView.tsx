@@ -71,17 +71,81 @@ export const SocialDownloaderView: React.FC = () => {
     }
   };
 
-  const handleDirectDownload = (mediaUrl: string, filename: string, id: string) => {
+  const getDownloadProxyUrl = (mediaUrl: string, filename: string) => {
+    return `/api/download-file?url=${encodeURIComponent(mediaUrl)}&filename=${encodeURIComponent(filename)}`;
+  };
+
+  const handleDirectDownload = async (
+    e: React.MouseEvent,
+    mediaUrl: string,
+    filename: string,
+    id: string
+  ) => {
+    e.preventDefault();
     setDownloadingId(id);
+
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_') || 'video.mp4';
+    const proxyUrl = getDownloadProxyUrl(mediaUrl, safeFilename);
+
+    try {
+      // Step 1: Direct CDN Blob fetch (Instant download with exact custom filename)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(mediaUrl, { mode: 'cors', signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = safeFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 20000);
+        setDownloadingId(null);
+        return;
+      }
+    } catch (err) {
+      // Direct CORS blocked, proceed to server attachment proxy
+    }
+
+    try {
+      // Step 2: Server attachment proxy blob
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = safeFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 20000);
+        setDownloadingId(null);
+        return;
+      }
+    } catch (err) {
+      // Fallback to direct navigation trigger
+    }
+
+    // Step 3: Direct attachment trigger
     const link = document.createElement('a');
-    link.href = mediaUrl;
+    link.href = proxyUrl;
+    link.download = safeFilename;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.download = filename || 'video.mp4';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setTimeout(() => setDownloadingId(null), 1500);
+
+    setTimeout(() => setDownloadingId(null), 2000);
   };
 
   const handleCopyLink = async (targetUrl: string, id: string) => {
@@ -280,24 +344,35 @@ export const SocialDownloaderView: React.FC = () => {
                           )}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDirectDownload(
-                              opt.url,
-                              `${result.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.${opt.ext || (opt.type === 'audio' ? 'mp3' : 'mp4')}`,
-                              opt.id
-                            )
-                          }
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black font-extrabold text-xs transition cursor-pointer shadow-md shadow-[#ff6b35]/20"
-                        >
-                          {downloadingId === opt.id ? (
-                            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Download className="w-3.5 h-3.5" />
-                          )}
-                          <span>Download</span>
-                        </button>
+                        {(() => {
+                          const baseTitle =
+                            (result.title || result.platform || 'video')
+                              .slice(0, 35)
+                              .replace(/[^a-zA-Z0-9]/g, '_')
+                              .replace(/^_+|_+$/g, '') || 'video';
+                          const fileExt =
+                            opt.ext || (opt.type === 'audio' ? 'mp3' : opt.type === 'image' ? 'jpg' : 'mp4');
+                          const targetFilename = `${baseTitle}.${fileExt}`;
+                          const proxyHref = getDownloadProxyUrl(opt.url, targetFilename);
+
+                          return (
+                            <a
+                              href={proxyHref}
+                              download={targetFilename}
+                              onClick={(e) =>
+                                handleDirectDownload(e, opt.url, targetFilename, opt.id)
+                              }
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff6b35] hover:bg-[#ff8354] text-black font-extrabold text-xs transition cursor-pointer shadow-md shadow-[#ff6b35]/20 text-decoration-none select-none"
+                            >
+                              {downloadingId === opt.id ? (
+                                <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Download className="w-3.5 h-3.5" />
+                              )}
+                              <span>Download</span>
+                            </a>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
