@@ -220,6 +220,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
     }
   };
 
+  const handleShareAppAdmin = async (app: PremiumAppItem) => {
+    const origin = window.location.origin;
+    const shareUrl = `${origin}/adult.html?app=${encodeURIComponent(app.name)}`;
+    const shareData = {
+      title: `${app.name} - App Premium | BMW CINEMA`,
+      text: `Pakua ${app.name} (${app.version || 'VIP Mod'}) bure kwenye BMW CINEMA App Premium:`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShareNotice(`App "${app.name}" imeshirikiwa kwa mafanikio!`);
+        setTimeout(() => setShareNotice(null), 3000);
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareNotice(`Link ya "${app.name}" imenakiliwa! Shiriki popote: ${shareUrl}`);
+      setTimeout(() => setShareNotice(null), 3500);
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const loadCustomAdultVideos = async () => {
     setLoadingCustomVideos(true);
     const list = await getCustomAdultVideos();
@@ -2221,6 +2250,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
                       </div>
 
                       <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleShareAppAdmin(app)}
+                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-[#ff6b35] hover:text-black text-gray-300 transition cursor-pointer"
+                          title="Share App Link"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+
                         <a
                           href={app.downloadUrl}
                           target="_blank"

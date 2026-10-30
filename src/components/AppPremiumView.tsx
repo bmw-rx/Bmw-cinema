@@ -93,11 +93,15 @@ export const AppPremiumView: React.FC = () => {
     loadApps();
     loadVideos();
 
-    // Check if URL has a specific video query parameter (?v=... or ?video=...)
+    // Check if URL has a specific video or app query parameter
     const params = new URLSearchParams(window.location.search);
     const videoParam = params.get('v') || params.get('video');
+    const appParam = params.get('app') || params.get('appId');
     if (videoParam) {
       setActiveSection('videos');
+    } else if (appParam) {
+      setActiveSection('apps');
+      setAppSearch(appParam);
     }
   }, []);
 
@@ -106,6 +110,7 @@ export const AppPremiumView: React.FC = () => {
     if (!appSearch.trim()) return true;
     const q = appSearch.toLowerCase();
     return (
+      app.id.toLowerCase() === q ||
       app.name.toLowerCase().includes(q) ||
       app.description.toLowerCase().includes(q) ||
       (app.category && app.category.toLowerCase().includes(q))
@@ -144,12 +149,79 @@ export const AppPremiumView: React.FC = () => {
     }, 2000);
   };
 
+  // Share App via Native Web Share or Clipboard
+  const handleShareApp = async (app: PremiumAppItem) => {
+    const origin = window.location.origin;
+    const shareUrl = `${origin}/adult.html?app=${encodeURIComponent(app.name)}`;
+    const shareData = {
+      title: `${app.name} - App Premium | BMW CINEMA`,
+      text: `Pakua ${app.name} (${app.version || 'VIP Mod'}) bure kwenye BMW CINEMA App Premium:`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShareToast(`App "${app.name}" imeshirikiwa kwa mafanikio!`);
+        setTimeout(() => setShareToast(null), 3000);
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedAppId(app.id);
+      setShareToast(`Link ya "${app.name}" imenakiliwa! Shiriki popote: ${shareUrl}`);
+      setTimeout(() => {
+        setCopiedAppId(null);
+        setShareToast(null);
+      }, 3500);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // Share App Premium Page
+  const handleSharePage = async () => {
+    const shareUrl = `${window.location.origin}/adult.html`;
+    const shareData = {
+      title: 'App Premium - BMW CINEMA',
+      text: 'Pakua verified VIP Android & iOS APK applications na unlocked mods bure kwenye BMW CINEMA App Premium:',
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShareToast('Ukurasa wa App Premium umeshirikiwa kwa mafanikio!');
+        setTimeout(() => setShareToast(null), 3000);
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareToast('Link ya App Premium imenakiliwa!');
+      setTimeout(() => setShareToast(null), 3000);
+    } catch (e) {
+      // ignore
+    }
+  };
+
   // Copy App link
   const handleCopyAppLink = async (app: PremiumAppItem) => {
     try {
       await navigator.clipboard.writeText(app.downloadUrl);
       setCopiedAppId(app.id);
-      setTimeout(() => setCopiedAppId(null), 2500);
+      setShareToast(`Download link ya "${app.name}" imenakiliwa!`);
+      setTimeout(() => {
+        setCopiedAppId(null);
+        setShareToast(null);
+      }, 2500);
     } catch (e) {
       // ignore
     }
@@ -189,11 +261,20 @@ export const AppPremiumView: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5" />
             <span>VIP Unlocked Hub</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3">
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3 flex-wrap">
             <span>App Premium</span>
             <span className="text-xs sm:text-sm font-bold px-2.5 py-1 rounded-lg bg-[#ff6b35] text-black uppercase tracking-wider">
               Official
             </span>
+            <button
+              type="button"
+              onClick={handleSharePage}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800/90 hover:bg-[#ff6b35] hover:text-black text-gray-200 text-xs font-bold transition cursor-pointer border border-zinc-700/80 shadow-sm"
+              title="Share App Premium Catalog"
+            >
+              <Share2 className="w-3.5 h-3.5 text-[#ff6b35] hover:text-black transition" />
+              <span>Share Hub</span>
+            </button>
           </h1>
           <p className="text-gray-400 text-xs sm:text-sm mt-2 max-w-2xl leading-relaxed">
             Download verified VIP Android and iOS APK applications, unlocked mods, ad-free streaming engines, and access exclusive video streams in full 4K HD.
@@ -345,11 +426,23 @@ export const AppPremiumView: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Share App Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleShareApp(app)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-zinc-800 hover:bg-[#ff6b35] hover:text-black text-gray-200 text-xs font-bold transition cursor-pointer border border-zinc-700/60 hover:border-[#ff6b35] shadow-sm"
+                        title={`Share ${app.name}`}
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-[#ff6b35] group-hover:text-black transition" />
+                        <span>Share</span>
+                      </button>
+
+                      {/* Copy Download URL */}
                       <button
                         type="button"
                         onClick={() => handleCopyAppLink(app)}
-                        className="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white transition cursor-pointer"
-                        title="Copy Download URL"
+                        className="p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-gray-300 hover:text-white transition cursor-pointer border border-zinc-700/60"
+                        title="Copy Direct Download Link"
                       >
                         {copiedAppId === app.id ? (
                           <Check className="w-4 h-4 text-emerald-400" />
@@ -358,6 +451,7 @@ export const AppPremiumView: React.FC = () => {
                         )}
                       </button>
 
+                      {/* Download App Button */}
                       <button
                         type="button"
                         onClick={() => handleDownloadApp(app)}
