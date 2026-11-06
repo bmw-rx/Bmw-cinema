@@ -52,9 +52,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ className = 
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff6b35] to-[#e63946] flex items-center justify-center text-black flex-shrink-0 shadow-lg shadow-[#ff6b35]/30">
-                <Smartphone className="w-6 h-6 stroke-[2.5]" />
-              </div>
+              <img
+                src="/pwa-192x192.png"
+                alt="BMW CINEMA App Logo"
+                className="w-12 h-12 rounded-xl object-contain bg-black border border-zinc-800 flex-shrink-0 shadow-lg shadow-[#ff6b35]/30"
+              />
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm sm:text-base font-black text-white tracking-wide">
@@ -126,9 +128,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ className = 
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-[#e63946] flex items-center justify-center text-black font-black text-xl shadow-lg shadow-[#ff6b35]/30">
-              ▶
-            </div>
+            <img
+              src="/pwa-192x192.png"
+              alt="BMW CINEMA App Logo"
+              className="w-12 h-12 rounded-2xl object-contain bg-black border border-zinc-800 shadow-lg shadow-[#ff6b35]/30"
+            />
             <div>
               <h3 className="text-lg font-black text-white tracking-wide">
                 Install BMW CINEMA
