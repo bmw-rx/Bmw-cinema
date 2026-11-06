@@ -623,13 +623,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
           <div className="bg-[#141414] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden">
             {/* Header / Brand */}
             <div className="p-6 sm:p-8 text-center border-b border-[#222] bg-gradient-to-b from-[#1c1c1c] to-[#141414]">
-              <div className="inline-flex items-center gap-2 mb-2">
-                <span className="w-8 h-8 rounded-lg bg-[#ff6b35] flex items-center justify-center font-black text-black text-sm shadow-[0_0_12px_rgba(255,107,53,0.4)]">
-                  ▶
-                </span>
-                <span className="text-2xl font-black tracking-tight text-white">
-                  BMW <span className="text-[#ff6b35]">CINEMA</span>
-                </span>
+              <div className="flex flex-col items-center justify-center mb-3">
+                <img
+                  src="/logo.png"
+                  alt="BMW CINEMA Logo"
+                  className="h-16 sm:h-20 w-auto object-contain drop-shadow-[0_4px_16px_rgba(255,107,53,0.3)] mb-2"
+                />
               </div>
               <p className="text-xs sm:text-sm text-gray-400 max-w-sm mx-auto">
                 {activeTab === 'login' && 'Sign in to access your saved watchlist, history, and fast downloads.'}

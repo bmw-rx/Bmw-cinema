@@ -11,10 +11,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           {/* Brand */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded bg-[#ff6b35] flex items-center justify-center font-black text-black text-xs">
-                ▶
-              </span>
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/logo.png"
+                alt="BMW CINEMA Logo"
+                className="h-8 w-auto object-contain drop-shadow-[0_2px_8px_rgba(255,107,53,0.3)]"
+              />
               <span className="text-lg font-black text-white tracking-tight">BMW</span>
               <span className="text-lg font-black text-[#ff6b35]">CINEMA</span>
             </div>

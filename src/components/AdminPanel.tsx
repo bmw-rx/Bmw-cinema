@@ -485,8 +485,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#ff6b35]/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="w-16 h-16 rounded-2xl bg-[#ff6b35]/15 border border-[#ff6b35]/30 flex items-center justify-center text-[#ff6b35] mx-auto mb-6 shadow-inner">
-            <ShieldAlert className="w-8 h-8" />
+          <div className="mb-6 flex justify-center">
+            <img
+              src="/logo.png"
+              alt="BMW CINEMA"
+              className="h-16 w-auto object-contain drop-shadow-[0_4px_16px_rgba(255,107,53,0.35)]"
+            />
           </div>
 
           <h1 className="text-2xl font-black text-white tracking-wider mb-2">
@@ -555,9 +559,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToHome, onNavigate
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6b35] to-red-600 flex items-center justify-center text-black font-black">
-              <ShieldCheck className="w-6 h-6 text-black" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="BMW CINEMA Logo"
+              className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_10px_rgba(255,107,53,0.3)] shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-black text-white tracking-wide">

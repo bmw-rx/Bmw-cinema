@@ -83,11 +83,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate, onOpenSe
           <a
             href="index.html"
             onClick={(e) => handleLinkClick(e, 'home')}
-            className="flex items-center gap-2 group whitespace-nowrap shrink-0 text-decoration-none"
+            className="flex items-center gap-2.5 group whitespace-nowrap shrink-0 text-decoration-none"
           >
-            <span className="w-8 h-8 rounded-lg bg-[#ff6b35] flex items-center justify-center font-black text-black text-base shadow-[0_0_15px_rgba(255,107,53,0.5)] group-hover:scale-105 transition-transform">
-              ▶
-            </span>
+            <img
+              src="/logo.png"
+              alt="BMW CINEMA Logo"
+              className="h-8 sm:h-9 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_2px_8px_rgba(255,107,53,0.35)]"
+            />
             <div className="flex items-baseline tracking-tighter">
               <span className="text-xl sm:text-2xl font-black text-white">BMW</span>
               <span className="text-xl sm:text-2xl font-black text-[#ff6b35] ml-1">CINEMA</span>

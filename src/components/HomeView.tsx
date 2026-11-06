@@ -108,13 +108,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 border-4 border-[#ff6b35] border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-          <span>BMW</span>
-          <span className="text-[#ff6b35]">CINEMA</span>
-        </h2>
-        <p className="text-gray-400 text-xs mt-1">Connecting to BMW CINEMA ultra HD catalog...</p>
+      <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center text-white px-4 text-center">
+        <img
+          src="/logo.png"
+          alt="BMW CINEMA"
+          className="h-20 sm:h-24 w-auto object-contain mb-5 animate-pulse drop-shadow-[0_4px_24px_rgba(255,107,53,0.35)]"
+        />
+        <div className="w-8 h-8 border-3 border-[#ff6b35] border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-gray-400 text-xs">Connecting to BMW CINEMA ultra HD catalog...</p>
       </div>
     );
   }
